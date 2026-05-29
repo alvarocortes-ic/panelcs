@@ -3264,27 +3264,20 @@ function buildAircallUnavailable(){
     + '</div></div>';
 }
 /* ============================================================
-   VISTA TELÉFONO (Aircall) v2 — 4 TABS (rediseño 2026-05-29, feedback VP)
-   ------------------------------------------------------------
-   Tabs (semántica del usuario):
-     live  → HOY hasta último sync vs ayer y mismo día sem. pasada (same-hour cutoff)
-     week  → semana actual vs anterior
-     ana   → rango profundo (30d): percentiles de espera, abandono por mesa, rellamadas, off-hours
-     org   → "Por Mesa/Línea" curado (Aircall NO tiene datos de cliente)
-   KPIs (validados contra BD): recibidas/contestadas/perdidas, tasa contestación/abandono,
-   ASA (frt_sec), abandono ajustado (duration<=10s), talk time (ended_at-answered_at),
-   rellamadas (raw_digits, sin troncales), off-hours (L-V 8:30-20 / Sáb 8:30-13:30).
-   SLA %<=Ns: NO se muestra aún (meta a acordar con VP) — sí ASA y percentiles de espera.
+   VISTA TELÉFONO (Aircall) v3 — 4 TABS enriquecidos (rediseño 2026-05-29, feedback VP)
+   Tabs: live (hoy vs ayer/sem.ant) · week (semana vs anterior, navegable) ·
+         ana (rango computeAnaWindow + granularidad) · org ("Por Mesa/Línea")
+   Criterios validados vs BD: recibidas/contestadas/perdidas, ASA(frt_sec),
+   abandono ajustado(duration<=10), talk(ended-answered), rellamadas(raw_digits),
+   off-hours(L-V 8:30-20/Sáb 8:30-13:30). Fechas SIEMPRE por componentes (DST-safe).
    ============================================================ */
-
-/* Colores paleta iConstruye (rojo más luminoso en dark). */
 var AC_ANS  = '#17A24F';
 var AC_LOST = (THEME === 'dark') ? '#F2555A' : '#BB1A1A';
 var AC_RECV = '#0047BB';
+var AC_OUT  = '#425563';
 var AC_WAIT = '#FF6A00';
 var AC_SEGB = (THEME === 'dark') ? '#15252E' : '#FFFFFF';
-
-var AC_ABAND_UMBRAL = 10;  /* parámetro: perdidas con duration<=Ns = abandono corto (equivocación). Acordar con CS. */
+var AC_ABAND_UMBRAL = 10;
 
 function acAlpha(hex, a){
   var h = hex.replace('#','');
@@ -3302,7 +3295,6 @@ function acFmtSec(s){
   var m = Math.floor(s/60);
   return m + 'm ' + acPad(s - m*60) + 's';
 }
-/* Semáforo de abandono por banda industria (verde<5 / ámbar 5-10 / rojo>10). */
 function acAbColor(pct){
   if (pct == null) return 'var(--mut)';
   if (pct < 5) return 'var(--ok)';
@@ -3316,21 +3308,32 @@ function acPctil(arr, p){
 }
 function acSrc(){ return (window.__CS_CALLS && window.__CS_CALLS.length) ? window.__CS_CALLS : (CALLS_ALL || []); }
 
-/* Horario laboral CS (Alvaro 2026-05-29): L-V 8:30-20:00, Sáb 8:30-13:30, Dom cerrado.
-   Recibe una Date local (navegador en Chile). */
+/* ---- fechas DST-safe (componentes de calendario, nunca aritmética de ms para días/semanas) ---- */
+function acMidnight(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0); }
+function acAddDays(d, n){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()+n, 0,0,0,0); }
+function acUnix(d){ return Math.floor(d.getTime()/1000); }
+function acMonday(d){ var dow=(d.getDay()+6)%7; return new Date(d.getFullYear(), d.getMonth(), d.getDate()-dow, 0,0,0,0); }
+
+/* Horario laboral CS: L-V 8:30-20:00, Sáb 8:30-13:30, Dom cerrado. */
 function acEsLaboral(d){
-  var dow = d.getDay();                       /* 0=dom .. 6=sáb */
-  var mins = d.getHours()*60 + d.getMinutes();
-  if (dow === 0) return false;                /* domingo cerrado */
-  if (dow === 6) return mins >= 510 && mins < 810;   /* sáb 8:30(510)-13:30(810) */
-  return mins >= 510 && mins < 1200;          /* L-V 8:30(510)-20:00(1200) */
+  var dow = d.getDay(), mins = d.getHours()*60 + d.getMinutes();
+  if (dow === 0) return false;
+  if (dow === 6) return mins >= 510 && mins < 810;
+  return mins >= 510 && mins < 1200;
 }
 
-/* Estadísticas de servicio sobre un array de calls (sólo inbound).
-   talk = ended_at - answered_at (NO duration, que incluye el ring). */
+/* Filtro por ejecutivo (cruce con el dropdown weekAgent del tab Semanal, por NOMBRE).
+   agentName() (del render) mapea el id de assignee a nombre; se compara con user_name. */
+function acFiltroEjec(calls){
+  if (S.tab !== 'week' || !S.weekAgent) return calls;   /* el selector ejecutivo solo vive en el tab Semanal */
+  var nm = (typeof agentName === 'function') ? agentName(S.weekAgent) : null;
+  if (!nm) return calls;
+  return calls.filter(function(c){ return c.user_name === nm; });
+}
+
+/* Estadísticas base (inbound). talk = ended_at - answered_at. */
 function acStats(calls){
-  var rec=0, ans=0, lost=0, lostCorto=0;
-  var asaArr=[], talkArr=[], lostDurArr=[];
+  var rec=0, ans=0, lost=0, lostCorto=0, asaArr=[], talkArr=[], lostDurArr=[];
   for (var i=0; i<calls.length; i++){
     var c = calls[i];
     if (c.direction !== 'inbound') continue;
@@ -3353,36 +3356,54 @@ function acStats(calls){
   function avg(a){ return a.length ? a.reduce(function(x,y){return x+y;},0)/a.length : null; }
   return {
     rec:rec, ans:ans, lost:lost, lostCorto:lostCorto,
-    contestPct: acPct(ans, rec),
-    abandPct: acPct(lost, rec),
+    contestPct: acPct(ans, rec), abandPct: acPct(lost, rec),
     abandAjustPct: acPct(lost - lostCorto, rec - lostCorto),
     asa: avg(asaArr), asaN: asaArr.length,
     talk: avg(talkArr), talkN: talkArr.length,
+    talkMed: acPctil(talkArr, 50),
     asaArr: asaArr, lostDurArr: lostDurArr
   };
 }
 
-/* Calls en [fromUnix, toUnix) por started_at (cualquier dirección). */
+/* Estadísticas extra: outbound, %ticket, libre/ocupado, duración mediana, IVRs, agentes, razones, mesa×razón. */
+function acStatsExtra(calls){
+  var out=0, withTicket=0, libre=0, ocupado=0, durArr=[];
+  var byIVR={}, byAgent={}, byReason={}, byMesaReason={};
+  var ticketByCall={};
+  if (typeof T_ALL !== 'undefined') for (var ti=0;ti<T_ALL.length;ti++){ var aid=T_ALL[ti].aircall_call_id; if(aid) ticketByCall[aid]=1; }
+  for (var i=0;i<calls.length;i++){ var c=calls[i];
+    if (c.direction==='outbound'){ out++; continue; }
+    if (c.direction!=='inbound') continue;
+    if (ticketByCall[c.id]) withTicket++;
+    if (c.missed_reason==='agents_did_not_answer') libre++;
+    if (c.missed_reason==='no_available_agent') ocupado++;
+    if (c.answered_at && typeof c.ended_at==='number' && typeof c.answered_at==='number'){ var t=c.ended_at-c.answered_at; if(t>=0&&t<14400) durArr.push(t); }
+    if (c.number_name && !acMesaExcluir(c.number_name)) byIVR[c.number_name]=(byIVR[c.number_name]||0)+1;
+    if (c.user_name){ var a=byAgent[c.user_name]=byAgent[c.user_name]||{calls:0,ans:0,dur:0}; a.calls++; if(c.answered_at){a.ans++; if(typeof c.ended_at==='number'){var tt=c.ended_at-c.answered_at; if(tt>=0&&tt<14400)a.dur+=tt;}} }
+    if (c.missed_reason){ byReason[c.missed_reason]=(byReason[c.missed_reason]||0)+1;
+      var mesa=(typeof getMesa==='function'?getMesa(c.number_name):c.number_name)||'Sin mesa';
+      var mr=byMesaReason[mesa]=byMesaReason[mesa]||{__t:0}; mr[c.missed_reason]=(mr[c.missed_reason]||0)+1; mr.__t++;
+    }
+  }
+  durArr.sort(function(a,b){return a-b;});
+  return { outbound:out, withTicket:withTicket, libre:libre, ocupado:ocupado,
+    durMed: durArr.length?durArr[Math.floor(durArr.length/2)]:null, durN:durArr.length,
+    byIVR:byIVR, byAgent:byAgent, byReason:byReason, byMesaReason:byMesaReason };
+}
+
+/* calls en [fromUnix, toUnix) por started_at + filtro ejecutivo. */
 function acInRange(fromUnix, toUnix){
-  var src = acSrc(), out = [];
+  var src = acFiltroEjec(acSrc()), out = [];
   for (var i=0; i<src.length; i++){
     var t = src[i].started_at;
     if (typeof t === 'number' && t >= fromUnix && t < toUnix) out.push(src[i]);
   }
   return out;
 }
-/* Límites unix [00:00, +24h) de una Date local. */
-function acDayBounds(d){
-  var s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
-  var from = Math.floor(s.getTime()/1000);
-  return { from: from, to: from + 86400 };
-}
+function acDayBounds(d){ var from = acUnix(acMidnight(d)); return { from: from, to: from + 86400 }; }
 
-/* Análisis de rellamadas por raw_digits, excluyendo troncales (>P99 llamadas).
-   Devuelve: rellamadaPct, perdidasSinReintento (clientes con perdida y sin llamada
-   posterior en la ventana V segundos), perdidasRecuperadas. */
+/* Análisis de rellamadas por raw_digits (excluye troncales >P99). */
 function acCallbackAnalysis(calls, ventanaSeg){
-  /* agrupar por raw_digits */
   var byNum = {};
   for (var i=0; i<calls.length; i++){
     var c = calls[i];
@@ -3390,109 +3411,151 @@ function acCallbackAnalysis(calls, ventanaSeg){
     (byNum[c.raw_digits] = byNum[c.raw_digits] || []).push(c);
   }
   var nums = Object.keys(byNum);
-  /* excluir troncales: P99 de nº de llamadas por número */
   var counts = nums.map(function(k){ return byNum[k].length; });
   var p99 = acPctil(counts, 99) || 9999;
-  var conRellamada = 0, base = 0, sinReintento = 0, recuperadas = 0;
+  var conRellamada=0, base=0, sinReintento=0, recuperadas=0;
   for (var n=0; n<nums.length; n++){
     var arr = byNum[nums[n]];
-    if (arr.length > p99) continue;               /* troncal/PBX → excluir */
+    if (arr.length > p99) continue;
     base++;
     arr.sort(function(a,b){ return a.started_at - b.started_at; });
     if (arr.length > 1) conRellamada++;
-    /* perdidas sin reintento: existe una perdida sin NINGUNA llamada posterior dentro de V */
-    var tuvoPerdida=false, recuperada=false, sinRe=false;
+    var recuperada=false, sinRe=false;
     for (var k=0; k<arr.length; k++){
       if (!arr[k].answered_at){
-        tuvoPerdida = true;
-        var hayPosterior=false, hayContestPosterior=false;
+        var hayPosterior=false, hayContest=false;
         for (var m=k+1; m<arr.length; m++){
-          if (arr[m].started_at - arr[k].started_at <= ventanaSeg){
-            hayPosterior = true;
-            if (arr[m].answered_at) hayContestPosterior = true;
-          }
+          if (arr[m].started_at - arr[k].started_at <= ventanaSeg){ hayPosterior=true; if(arr[m].answered_at) hayContest=true; }
         }
-        if (hayContestPosterior) recuperada = true;
-        if (!hayPosterior) sinRe = true;
+        if (hayContest) recuperada=true;
+        if (!hayPosterior) sinRe=true;
       }
     }
     if (recuperada) recuperadas++;
     if (sinRe && !recuperada) sinReintento++;
   }
-  return {
-    base: base, p99: p99,
-    rellamadaPct: acPct(conRellamada, base),
-    perdidasSinReintento: sinReintento,
-    perdidasRecuperadas: recuperadas
-  };
+  return { base:base, p99:p99, rellamadaPct:acPct(conRellamada, base),
+    perdidasSinReintento:sinReintento, perdidasRecuperadas:recuperadas };
 }
 
-/* Clasificación de number_name para el tab "Por Mesa/Línea".
-   EXCLUYE de la cara la contaminación clara (PII de agentes, números crudos, "Libre").
-   El resto (IVRs + clientes + funcionales) se muestra como mesa legítima.
-   NOTA: la distinción fina cliente-real vs mesa-funcional la define la líder en
-   MAPPING-MESAS.md (hoy sin curar) — por eso no se sub-clasifica aquí, solo se excluye PII/basura. */
+/* curación de number_name para "Por Mesa/Línea": excluye PII de agentes, crudos, "Libre". */
 var AC_AGENTES_PII = {
   'Jessica Vélez':1,'Natalia Ruiz':1,'Gloria Rebolledo':1,'Alberto Mercado':1,
   'Javiera Castro':1,'Joel Campos':1,'Monica Salas':1,'Fernanda Lillo':1
 };
 function acMesaExcluir(numberName){
   if (!numberName) return true;
-  if (AC_AGENTES_PII[numberName]) return true;           /* PII de agente */
-  if (/^\d+$/.test(numberName)) return true;             /* número crudo */
-  if (/^Libre\s*\d*$/i.test(numberName)) return true;    /* Libre 1/2/3/4 */
+  if (AC_AGENTES_PII[numberName]) return true;
+  if (/^\d+$/.test(numberName)) return true;
+  if (/^Libre\s*\d*$/i.test(numberName)) return true;
   return false;
 }
 
-/* ---- helpers de tabla con columnas CENTRADAS (fix formato VP) ---- */
+var AC_REASON_LABELS = {
+  'no_available_agent':'Sin agente disponible', 'agents_did_not_answer':'Agentes no atendieron',
+  'short_abandoned':'Abandono corto', 'abandoned_in_ivr':'Abandono en IVR',
+  'abandoned_in_classic':'Abandono en cola', 'out_of_opening_hours':'Fuera de horario'
+};
+var AC_REASON_COLS = ['no_available_agent','agents_did_not_answer','short_abandoned','abandoned_in_ivr','abandoned_in_classic','out_of_opening_hours'];
+
+/* ---- helpers de tabla (columnas centradas) ---- */
 function acThC(txt){ return '<th style="text-align:center">' + esc(txt) + '</th>'; }
 function acTdC(html){ return '<td style="text-align:center">' + html + '</td>'; }
 function acTdAb(pct){ return '<td style="text-align:center;color:' + acAbColor(pct) + ';font-weight:600">' + (pct==null?'—':pct+'%') + '</td>'; }
 var AC_BADGE = '<span class="cs-badge cs-badge-ac">AIRCALL</span>';
 
-/* serie por día: array de Dates → [{key,label,date,isWeekend,isToday,rec,ans,lost,abandPct}] */
-function acSerieDias(dates){
-  var todayKey = acDayKey(new Date());
-  return dates.map(function(d){
-    var b = acDayBounds(d);
-    var st = acStats(acInRange(b.from, b.to));
-    return { key:acDayKey(d), label:fmtDM(d), date:d,
-      isWeekend:(d.getDay()===0||d.getDay()===6), isToday:(acDayKey(d)===todayKey),
-      rec:st.rec, ans:st.ans, lost:st.lost, abandPct:st.abandPct };
-  });
-}
-/* delta textual (▲/▼ %) — solo el contenido, sin span (se usa dentro de .s) */
-function acDelta(cur, prev, atipico){
-  if (atipico) return 'día atípico';
+function acDelta(cur, prev, atip){
+  if (atip) return 'día atípico';
   if (prev == null || prev === 0) return '—';
   var diff = cur - prev;
   if (diff === 0) return '→ igual';
   return (diff>0?'▲':'▼') + ' ' + Math.round(Math.abs(diff)*100/prev) + '%';
 }
-/* fila de tabla comparativa: nombre + valores por período (centrados) */
-function acCompRow(label, vals){
-  return '<tr><td>' + esc(label) + '</td>' + vals.map(function(v){ return acTdC(v); }).join('') + '</tr>';
+function acKpi(value, label, sub, color){
+  return '<div class="cs-kpi"><div class="bar" style="background:' + color + '"></div>'
+    + '<div class="v">' + value + '</div><div class="l">' + esc(label) + '</div>'
+    + '<div class="s">' + (sub||'') + '</div></div>';
 }
-/* tabla comparativa de KPIs entre N períodos (cols) */
+function acKpiAb(st, label, sub){
+  var col = acAbColor(st.abandPct);
+  return '<div class="cs-kpi" style="border-color:' + col + '"><div class="bar" style="background:' + col + '"></div>'
+    + '<div class="v" style="color:' + col + '">' + acPctTxt(st.lost, st.rec) + '</div><div class="l">' + esc(label) + '</div>'
+    + '<div class="s">' + (sub||'') + '</div></div>';
+}
+
+/* fila de cards "extra" pedidas por VP: salientes, %atend, %perd, libre, ocupado, duración, %ticket */
+function acCardsExtra(st, ex, incluyeBasicos){
+  var h = '<div class="cs-kgrid k4" style="margin-top:6px">';
+  h += acKpi(ex.outbound.toLocaleString('es-CL'), 'Llamadas emitidas (salientes)', 'outbound del período', AC_OUT);
+  if (incluyeBasicos){
+    h += acKpi(acPctTxt(st.ans, st.rec), '% Atendidas', st.ans + ' de ' + st.rec, AC_ANS);
+    h += '<div class="cs-kpi" style="border-color:' + acAbColor(st.abandPct) + '"><div class="bar" style="background:' + acAbColor(st.abandPct) + '"></div><div class="v" style="color:' + acAbColor(st.abandPct) + '">' + acPctTxt(st.lost, st.rec) + '</div><div class="l">% Perdidas</div><div class="s">' + st.lost + ' de ' + st.rec + '</div></div>';
+  }
+  h += acKpi(acFmtSec(st.talkMed), 'Duración mediana', st.talkN + ' contestadas (conversación)', '#6B4FBB');
+  h += '</div>';
+  h += '<div class="cs-kgrid k4" style="margin-top:10px">';
+  h += acKpi(acPctTxt(ex.libre, st.rec), 'No atendidas · agente libre', ex.libre.toLocaleString('es-CL') + ' llam. · solo histórico*', AC_LOST);
+  h += acKpi(acPctTxt(ex.ocupado, st.rec), 'No atendidas · sin agente', ex.ocupado.toLocaleString('es-CL') + ' llam. · solo histórico*', AC_LOST);
+  h += acKpi(acPctTxt(ex.withTicket, st.rec), 'Con ticket Zendesk', ex.withTicket.toLocaleString('es-CL') + ' cruzadas', '#6B4FBB');
+  h += acKpi(acFmtSec(st.asa), 'Espera prom. (ASA)', 'p90 ' + acFmtSec(acPctil(st.asaArr,90)) + ' · ' + st.asaN + ' con dato', AC_WAIT);
+  h += '</div>';
+  h += '<div style="font-size:10.5px;color:var(--mut);margin-top:4px">* El motivo de pérdida (agente libre/sin agente) solo viene poblado en datos históricos; la ingesta en vivo de Aircall no lo registra.</div>';
+  return h;
+}
+
+/* Top IVRs + Top agentes (2 columnas) */
+function acBloqueTops(ex){
+  function topN(map, n, ex2){ return Object.keys(map).map(function(k){return [k,map[k]];}).sort(function(a,b){return (ex2?ex2(b[1]):b[1])-(ex2?ex2(a[1]):a[1]);}).slice(0,n); }
+  var ivr = topN(ex.byIVR, 10), ag = topN(ex.byAgent, 10, function(v){return v.calls;});
+  var h = '<div class="cs-cgrid" style="grid-template-columns:1fr 1fr;gap:16px">';
+  h += '<div><div class="cs-h2">Top IVRs / mesas ' + AC_BADGE + '</div><div class="cs-card"><table class="cs-t"><thead><tr><th>IVR / mesa</th>' + acThC('Recibidas') + '</tr></thead><tbody>';
+  ivr.forEach(function(r){ h += '<tr><td>' + esc(r[0]) + '</td>' + acTdC(r[1].toLocaleString('es-CL')) + '</tr>'; });
+  h += '</tbody></table></div></div>';
+  h += '<div><div class="cs-h2">Top agentes ' + AC_BADGE + '</div><div class="cs-card"><table class="cs-t"><thead><tr><th>Agente</th>' + acThC('Calls') + acThC('Atend.') + acThC('Dur prom') + '</tr></thead><tbody>';
+  ag.forEach(function(r){ var v=r[1], avg=v.ans>0?Math.round(v.dur/v.ans):null; h += '<tr><td>' + esc(r[0]) + '</td>' + acTdC(v.calls.toLocaleString('es-CL')) + acTdC(v.ans.toLocaleString('es-CL')) + acTdC(acFmtSec(avg)) + '</tr>'; });
+  h += '</tbody></table></div></div></div>';
+  return h;
+}
+
+/* Razones de pérdida + Pérdidas por mesa y razón */
+function acBloqueRazones(ex, st){
+  var totReason = AC_REASON_COLS.reduce(function(a,k){ return a + (ex.byReason[k]||0); }, 0);
+  var sinMotivo = st.lost - totReason;
+  var h = '<div class="cs-h2">Razones de llamadas perdidas ' + AC_BADGE + '<span class="cs-h2s">motivo solo en histórico · perdidas sin motivo agrupadas aparte</span></div>'
+    + '<div class="cs-card"><table class="cs-t"><thead><tr><th>Razón</th>' + acThC('Perdidas') + acThC('% del total') + '</tr></thead><tbody>';
+  AC_REASON_COLS.forEach(function(k){ var v=ex.byReason[k]||0; if(v) h += '<tr><td>' + esc(AC_REASON_LABELS[k]) + '</td>' + acTdC(v.toLocaleString('es-CL')) + acTdC(acPctTxt(v, st.lost)) + '</tr>'; });
+  h += '<tr><td style="color:var(--mut)">Sin motivo registrado</td>' + acTdC(sinMotivo.toLocaleString('es-CL')) + acTdC(acPctTxt(sinMotivo, st.lost)) + '</tr>';
+  h += '</tbody></table></div>';
+  /* mesa × razón */
+  var mesas = Object.keys(ex.byMesaReason).map(function(k){return [k,ex.byMesaReason[k]];}).filter(function(e){return e[1].__t>0;}).sort(function(a,b){return b[1].__t-a[1].__t;});
+  if (mesas.length){
+    h += '<div class="cs-h2">Pérdidas por mesa y razón ' + AC_BADGE + '<span class="cs-h2s">solo histórico</span></div>'
+      + '<div class="cs-card"><table class="cs-t"><thead><tr><th>Mesa</th>' + acThC('Total') + AC_REASON_COLS.map(function(k){return acThC(AC_REASON_LABELS[k]);}).join('') + '</tr></thead><tbody>';
+    mesas.forEach(function(e){ var mn=e[0], mr=e[1]; h += '<tr><td>' + esc(mn) + '</td>' + acTdC('<b>'+mr.__t+'</b>') + AC_REASON_COLS.map(function(k){return acTdC(mr[k]?mr[k].toLocaleString('es-CL'):'–');}).join('') + '</tr>'; });
+    h += '</tbody></table></div>';
+  }
+  return h;
+}
+
+/* tabla comparativa de KPIs entre períodos (col INDICADOR centrado por pedido VP) */
 function acTablaComparativa(titulo, periodos){
-  /* periodos = [{nombre, st, cb}] */
   var html = '<div class="cs-h2">' + esc(titulo) + ' ' + AC_BADGE + '</div>'
-    + '<div class="cs-card"><table class="cs-t"><thead><tr><th>Indicador</th>'
-    + periodos.map(function(p){ return acThC(p.nombre); }).join('') + '</tr></thead><tbody>';
-  html += acCompRow('Recibidas', periodos.map(function(p){ return p.st.rec.toLocaleString('es-CL'); }));
-  html += acCompRow('Contestadas', periodos.map(function(p){ return p.st.ans.toLocaleString('es-CL'); }));
-  html += acCompRow('Perdidas', periodos.map(function(p){ return p.st.lost.toLocaleString('es-CL'); }));
-  html += '<tr><td>% Abandono</td>' + periodos.map(function(p){ return acTdAb(p.st.abandPct); }).join('') + '</tr>';
-  html += acCompRow('% Abandono ajustado', periodos.map(function(p){ return acPctTxt(p.st.lost-p.st.lostCorto, p.st.rec-p.st.lostCorto); }));
-  html += acCompRow('% Contestación', periodos.map(function(p){ return acPctTxt(p.st.ans, p.st.rec); }));
-  html += acCompRow('Espera prom. (ASA)', periodos.map(function(p){ return acFmtSec(p.st.asa); }));
-  html += acCompRow('Duración conversación', periodos.map(function(p){ return acFmtSec(p.st.talk); }));
-  if (periodos[0].cb) html += acCompRow('Perdidas sin reintento', periodos.map(function(p){ return p.cb ? p.cb.perdidasSinReintento.toLocaleString('es-CL') : '—'; }));
+    + '<div class="cs-card"><table class="cs-t"><thead><tr>' + acThC('Indicador') + periodos.map(function(p){ return acThC(p.nombre); }).join('') + '</tr></thead><tbody>';
+  function row(lbl, fn){ return '<tr>' + acTdC(lbl) + periodos.map(function(p){ return acTdC(fn(p)); }).join('') + '</tr>'; }
+  html += row('Recibidas', function(p){ return p.st.rec.toLocaleString('es-CL'); });
+  html += row('Contestadas', function(p){ return p.st.ans.toLocaleString('es-CL'); });
+  html += row('Perdidas', function(p){ return p.st.lost.toLocaleString('es-CL'); });
+  html += '<tr>' + acTdC('% Abandono') + periodos.map(function(p){ return acTdAb(p.st.abandPct); }).join('') + '</tr>';
+  html += row('% Abandono ajustado', function(p){ return acPctTxt(p.st.lost-p.st.lostCorto, p.st.rec-p.st.lostCorto); });
+  html += row('% Contestación', function(p){ return acPctTxt(p.st.ans, p.st.rec); });
+  html += row('Espera prom. (ASA)', function(p){ return acFmtSec(p.st.asa); });
+  html += row('Duración mediana', function(p){ return acFmtSec(p.st.talkMed); });
+  if (periodos[0].ex) html += row('Salientes (outbound)', function(p){ return p.ex ? p.ex.outbound.toLocaleString('es-CL') : '—'; });
+  if (periodos[0].cb) html += row('Perdidas sin reintento', function(p){ return p.cb ? p.cb.perdidasSinReintento.toLocaleString('es-CL') : '—'; });
   html += '</tbody></table></div>';
   return html;
 }
 
-/* guard de carga / sin datos */
 function acGuard(){
   var src = acSrc();
   if (src && src.length) return null;
@@ -3501,10 +3564,8 @@ function acGuard(){
     + '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">'
     + (loading ? 'Cargando llamadas Aircall…' : 'Sin datos Aircall') + '</div>'
     + '<div style="font-size:13px;margin-bottom:14px">'
-    + (loading ? 'Descargando el seed Aircall (≈ 3 MB · primera vez del día). Se actualiza solo al terminar.'
-               : 'No se pudo cargar el seed Aircall. Reintenta la descarga.') + '</div>'
-    + (loading ? '<div style="font-size:24px">⏳</div>'
-               : '<button class="cs-lbtn" id="acRetryBtn" style="display:inline-block;width:auto;padding:8px 18px">Reintentar descarga</button>')
+    + (loading ? 'Descargando el seed Aircall (≈ 3 MB · primera vez del día).' : 'No se pudo cargar el seed Aircall. Reintenta.') + '</div>'
+    + (loading ? '<div style="font-size:24px">⏳</div>' : '<button class="cs-lbtn" id="acRetryBtn" style="display:inline-block;width:auto;padding:8px 18px">Reintentar descarga</button>')
     + '</div>';
 }
 
@@ -3516,155 +3577,100 @@ function buildAircallView(){
   else if (S.tab === 'week') inner = buildAcWeek();
   else if (S.tab === 'org')  inner = buildAcMesa();
   else inner = buildAcAnalisis();
-  return '<div style="margin-top:14px">' + inner + '</div>';   /* separa del filterBar */
+  return '<div style="margin-top:14px">' + inner + '</div>';
 }
 
 /* ============================ TAB EN VIVO ============================ */
 function buildAcLive(){
   var now = new Date();
-  var hoy0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
-  var hoyFrom = Math.floor(hoy0.getTime()/1000);
-  var nowU = Math.floor(now.getTime()/1000);
-  var offset = nowU - hoyFrom;
-  var ayer0 = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()-1, 0,0,0,0).getTime()/1000);
-  var sem0  = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()-7, 0,0,0,0).getTime()/1000);
-
+  var hoy0 = acMidnight(now), hoyFrom = acUnix(hoy0), nowU = acUnix(now), offset = nowU - hoyFrom;
+  var ayer0 = acUnix(acAddDays(now,-1)), sem0 = acUnix(acAddDays(now,-7));
   var hoyCalls = acInRange(hoyFrom, nowU);
-  var hoy  = acStats(hoyCalls);
-  var ayer = acStats(acInRange(ayer0, ayer0 + offset));
-  var sem  = acStats(acInRange(sem0,  sem0  + offset));
-  var ayerAtip = ayer.rec < 10, semAtip = sem.rec < 10;
-
+  var hoy = acStats(hoyCalls), ex = acStatsExtra(hoyCalls);
+  var ayer = acStats(acInRange(ayer0, ayer0 + offset)), sem = acStats(acInRange(sem0, sem0 + offset));
+  var ayerAtip = ayer.rec<10, semAtip = sem.rec<10;
   var hhmm = acPad(now.getHours()) + ':' + acPad(now.getMinutes());
-  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:4px">Teléfono ' + AC_BADGE
-    + ' · <b style="color:var(--text)">hoy hasta ' + hhmm + '</b> (intradía acumulado)</div>'
-    + '<div style="font-size:11.5px;color:var(--mut);margin-bottom:11px">⚠ Datos hasta el último sync (≤5 min) — no es estado de cola en vivo. Comparado vs ayer y vs el mismo día de la semana pasada, recortados a la misma hora.</div>';
 
-  /* fila de 4 KPIs */
+  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:4px">Teléfono ' + AC_BADGE + ' · <b style="color:var(--text)">hoy hasta ' + hhmm + '</b> (intradía acumulado)</div>'
+    + '<div style="font-size:11.5px;color:var(--mut);margin-bottom:11px">⚠ Datos hasta el último sync (≤5 min) — no es estado de cola en vivo. Comparado vs ayer y vs mismo día de la semana pasada, a la misma hora.</div>';
   html += '<div class="cs-kgrid k4">';
-  html += '<div class="cs-kpi"><div class="bar" style="background:' + AC_RECV + '"></div>'
-    + '<div class="v">' + hoy.rec.toLocaleString('es-CL') + '</div><div class="l">Recibidas hoy</div>'
-    + '<div class="s">vs ayer ' + acDelta(hoy.rec, ayer.rec, ayerAtip) + ' · vs sem.ant ' + acDelta(hoy.rec, sem.rec, semAtip) + '</div></div>';
-  html += '<div class="cs-kpi"><div class="bar" style="background:' + AC_ANS + '"></div>'
-    + '<div class="v">' + hoy.ans.toLocaleString('es-CL') + '</div><div class="l">Contestadas hoy</div>'
-    + '<div class="s">' + acPctTxt(hoy.ans, hoy.rec) + ' de atención · vs ayer ' + acDelta(hoy.ans, ayer.ans, ayerAtip) + '</div></div>';
-  var abCol = acAbColor(hoy.abandPct);
-  html += '<div class="cs-kpi" style="border-color:' + abCol + '"><div class="bar" style="background:' + abCol + '"></div>'
-    + '<div class="v" style="color:' + abCol + '">' + acPctTxt(hoy.lost, hoy.rec) + '</div><div class="l">Abandono hoy</div>'
-    + '<div class="s">' + hoy.lost + ' perdidas · vs ayer ' + acDelta(hoy.abandPct||0, ayer.abandPct, ayerAtip) + '</div></div>';
-  html += kpiCard(acFmtSec(hoy.asa), 'Espera prom. (ASA) hoy', hoy.asaN + ' con dato · p90 ' + acFmtSec(acPctil(hoy.asaArr,90)), AC_WAIT);
+  html += acKpi(hoy.rec.toLocaleString('es-CL'), 'Recibidas hoy', 'vs ayer ' + acDelta(hoy.rec, ayer.rec, ayerAtip) + ' · vs sem.ant ' + acDelta(hoy.rec, sem.rec, semAtip), AC_RECV);
+  html += acKpi(hoy.ans.toLocaleString('es-CL'), 'Contestadas hoy', acPctTxt(hoy.ans, hoy.rec) + ' atención · vs ayer ' + acDelta(hoy.ans, ayer.ans, ayerAtip), AC_ANS);
+  html += acKpiAb(hoy, 'Abandono hoy', hoy.lost + ' perdidas · vs ayer ' + acDelta(hoy.abandPct||0, ayer.abandPct, ayerAtip));
+  html += acKpi(ex.outbound.toLocaleString('es-CL'), 'Llamadas emitidas hoy', 'salientes (outbound)', AC_OUT);
+  html += '</div>';
+  /* cards extra: ASA, duración mediana, %ticket */
+  html += '<div class="cs-kgrid k4" style="margin-top:10px">';
+  html += acKpi(acFmtSec(hoy.asa), 'Espera prom. (ASA)', hoy.asaN + ' con dato · p90 ' + acFmtSec(acPctil(hoy.asaArr,90)), AC_WAIT);
+  html += acKpi(acFmtSec(hoy.talkMed), 'Duración mediana', hoy.talkN + ' contestadas', '#6B4FBB');
+  html += acKpi(acPctTxt(ex.withTicket, hoy.rec), 'Con ticket Zendesk', ex.withTicket + ' cruzadas', '#6B4FBB');
+  html += acKpi(acPctTxt(hoy.lost-hoy.lostCorto, hoy.rec-hoy.lostCorto), 'Abandono ajustado', 'excl. ≤' + AC_ABAND_UMBRAL + 's', AC_LOST);
   html += '</div>';
 
-  /* gráfico intradía */
-  html += '<div class="cs-h2">Curva de hoy por hora ' + AC_BADGE
-    + '<span class="cs-h2s">contestadas + perdidas · línea = recibidas mismo día sem. pasada</span></div>'
-    + chartCard('', 'cAcLive', 300);
-
-  /* tabla comparativa hoy / ayer / sem pasada */
-  html += acTablaComparativa('Hoy vs ayer vs semana pasada (a la misma hora)', [
-    { nombre:'Hoy (' + hhmm + ')', st:hoy },
-    { nombre:'Ayer', st:ayer },
-    { nombre:'Sem. pasada', st:sem }
-  ]);
-
-  /* por mesa de hoy */
+  html += '<div class="cs-h2">Curva de hoy por hora ' + AC_BADGE + '<span class="cs-h2s">contestadas + perdidas · línea = recibidas mismo día sem. pasada</span></div>' + chartCard('', 'cAcLive', 300);
+  html += '<div class="cs-h2">Patrón temporal por hora ' + AC_BADGE + '<span class="cs-h2s">entrantes (inbound) vs salientes (outbound)</span></div>' + chartCard('', 'cAcLiveIO', 260);
+  html += acTablaComparativa('Hoy vs ayer vs semana pasada (a la misma hora)', [{nombre:'Hoy ('+hhmm+')',st:hoy},{nombre:'Ayer',st:ayer},{nombre:'Sem. pasada',st:sem}]);
+  html += acBloqueTops(ex);
   html += acTablaPorMesa(hoyCalls, 'Por mesa / línea · hoy');
   return html;
 }
 
 /* ============================ TAB SEMANAL ============================ */
-/* Respeta el navegador de semanas (S.weekOffset vía semanaActual()). */
 function buildAcWeek(){
-  var now = new Date();
-  var mon = semanaActual();                         /* lunes de la semana seleccionada (respeta weekOffset) */
-  var monU = Math.floor(mon.getTime()/1000);
-  var finU = Math.floor((mon.getTime() + 7*86400000)/1000);
-  var nowU = Math.floor(now.getTime()/1000);
-  var esActual = (S.weekOffset || 0) === 0;
+  var mon = semanaActual();
+  var monU = acUnix(mon), finU = acUnix(acAddDays(mon,7)), nowU = acUnix(new Date());
+  var esActual = (S.weekOffset||0)===0;
   var toU = esActual ? Math.min(finU, nowU) : finU;
   var offset = toU - monU;
-  var monAntU = Math.floor(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()-7, 0,0,0,0).getTime()/1000);
-
+  var monAntU = acUnix(acAddDays(mon,-7));
   var calls = acInRange(monU, toU);
-  var actual = acStats(calls);
-  var anterior = acStats(acInRange(monAntU, monAntU + offset));
-  var cbAct = acCallbackAnalysis(calls, 7*86400);
-  var cbAnt = acCallbackAnalysis(acInRange(monAntU, monAntU + offset), 7*86400);
+  var actual = acStats(calls), ex = acStatsExtra(calls);
+  var antCalls = acInRange(monAntU, monAntU + offset);
+  var anterior = acStats(antCalls), exAnt = acStatsExtra(antCalls);
+  var cbAct = acCallbackAnalysis(calls, 7*86400), cbAnt = acCallbackAnalysis(antCalls, 7*86400);
+  var fri = acAddDays(mon,4);
 
-  var fri = new Date(mon.getTime() + 4*86400000);
-  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:11px">Teléfono ' + AC_BADGE
-    + ' · <b style="color:var(--text)">semana ' + fmtDM(mon) + ' al ' + fmtDM(fri) + '</b>'
-    + (esActual ? ' (en curso, parcial)' : '') + ' · comparada vs misma franja de la semana anterior</div>';
-
-  /* fila de 4 KPIs */
+  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:11px">Teléfono ' + AC_BADGE + ' · <b style="color:var(--text)">semana ' + fmtDM(mon) + ' al ' + fmtDM(fri) + '</b>' + (esActual?' (en curso, parcial)':'') + ' · vs misma franja de la semana anterior' + (S.weekAgent?' · ejecutivo filtrado':'') + '</div>';
   html += '<div class="cs-kgrid k4">';
-  html += '<div class="cs-kpi"><div class="bar" style="background:' + AC_RECV + '"></div>'
-    + '<div class="v">' + actual.rec.toLocaleString('es-CL') + '</div><div class="l">Recibidas</div>'
-    + '<div class="s">vs sem.ant ' + acDelta(actual.rec, anterior.rec, anterior.rec<10) + '</div></div>';
-  var abCol = acAbColor(actual.abandPct);
-  html += '<div class="cs-kpi" style="border-color:' + abCol + '"><div class="bar" style="background:' + abCol + '"></div>'
-    + '<div class="v" style="color:' + abCol + '">' + acPctTxt(actual.lost, actual.rec) + '</div><div class="l">Abandono (bruto)</div>'
-    + '<div class="s">ajustado ' + acPctTxt(actual.lost-actual.lostCorto, actual.rec-actual.lostCorto) + ' · vs sem.ant ' + acDelta(actual.abandPct||0, anterior.abandPct, anterior.rec<10) + '</div></div>';
-  html += kpiCard(acFmtSec(actual.asa), 'Espera prom. (ASA)', 'p90 ' + acFmtSec(acPctil(actual.asaArr,90)) + ' · ' + actual.asaN + ' con dato', AC_WAIT);
-  html += '<div class="cs-kpi"><div class="bar" style="background:' + AC_LOST + '"></div>'
-    + '<div class="v">' + cbAct.perdidasSinReintento.toLocaleString('es-CL') + '</div><div class="l">Perdidas sin reintento</div>'
-    + '<div class="s">clientes que no volvieron (7d) · daño real</div></div>';
+  html += acKpi(actual.rec.toLocaleString('es-CL'), 'Recibidas', 'vs sem.ant ' + acDelta(actual.rec, anterior.rec, anterior.rec<10), AC_RECV);
+  html += acKpiAb(actual, 'Abandono (bruto)', 'ajustado ' + acPctTxt(actual.lost-actual.lostCorto, actual.rec-actual.lostCorto) + ' · vs sem.ant ' + acDelta(actual.abandPct||0, anterior.abandPct, anterior.rec<10));
+  html += acKpi(acFmtSec(actual.asa), 'Espera prom. (ASA)', 'p90 ' + acFmtSec(acPctil(actual.asaArr,90)) + ' · ' + actual.asaN + ' con dato', AC_WAIT);
+  html += acKpi(cbAct.perdidasSinReintento.toLocaleString('es-CL'), 'Perdidas sin reintento', 'no volvieron (7d) · daño real', AC_LOST);
   html += '</div>';
+  html += acCardsExtra(actual, ex, true);
 
-  /* gráfico por día de la semana */
-  html += '<div class="cs-h2">Semana por día ' + AC_BADGE
-    + '<span class="cs-h2s">contestadas (verde) + perdidas (rojo) · lun→dom</span></div>'
-    + chartCard('', 'cAcWeek', 280);
-
-  /* comparativa actual vs anterior */
-  html += acTablaComparativa('Semana actual vs anterior', [
-    { nombre:'Esta semana', st:actual, cb:cbAct },
-    { nombre:'Semana anterior', st:anterior, cb:cbAnt }
-  ]);
-
-  /* tendencia últimas 8 semanas */
-  html += '<div class="cs-h2">Tendencia · últimas 8 semanas ' + AC_BADGE
-    + '<span class="cs-h2s">recibidas y % abandono por semana</span></div>'
-    + chartCard('', 'cAcWeekTrend', 240);
-
-  /* por mesa de la semana */
+  html += '<div class="cs-h2">Llamadas por día ' + AC_BADGE + '<span class="cs-h2s">entrantes / salientes / atendidas · lun→dom</span></div>' + chartCard('', 'cAcWeek', 300);
+  html += '<div class="cs-h2">Patrón temporal por hora ' + AC_BADGE + '<span class="cs-h2s">promedio entrantes vs salientes por hora en la semana</span></div>' + chartCard('', 'cAcWeekIO', 260);
+  html += acTablaComparativa('Semana actual vs anterior', [{nombre:'Esta semana',st:actual,ex:ex,cb:cbAct},{nombre:'Semana anterior',st:anterior,ex:exAnt,cb:cbAnt}]);
+  html += '<div class="cs-h2">Tendencia · últimas 8 semanas ' + AC_BADGE + '<span class="cs-h2s">recibidas y % abandono</span></div>' + chartCard('', 'cAcWeekTrend', 240);
+  html += acBloqueRazones(ex, actual);
+  html += acBloqueTops(ex);
   html += acTablaPorMesa(calls, 'Por mesa / línea · esta semana');
   return html;
 }
 
 /* ============================ TAB ANÁLISIS ============================ */
-/* Respeta los controles del tab (computeAnaWindow: modo/desde/hasta; S.gran: día/sem/mes). */
 function buildAcAnalisis(){
   var w = computeAnaWindow();
   var fromU = Math.floor(w.startMs/1000), toU = Math.floor(w.endMs/1000) + 1;
   var rango = acInRange(fromU, toU);
-  var st = acStats(rango);
-  var cb = acCallbackAnalysis(rango, 7*86400);
-
-  /* off-hours con horario CS real */
+  var st = acStats(rango), ex = acStatsExtra(rango), cb = acCallbackAnalysis(rango, 7*86400);
   var offRec=0, offLost=0;
-  for (var i=0;i<rango.length;i++){ var c=rango[i];
-    if (c.direction!=='inbound' || typeof c.started_at!=='number') continue;
-    if (!acEsLaboral(new Date(c.started_at*1000))){ offRec++; if(!c.answered_at) offLost++; }
-  }
+  for (var i=0;i<rango.length;i++){ var c=rango[i]; if(c.direction!=='inbound'||typeof c.started_at!=='number')continue; if(!acEsLaboral(new Date(c.started_at*1000))){offRec++; if(!c.answered_at)offLost++;} }
+  var gran = (S.gran||'day');
 
-  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:11px">Teléfono ' + AC_BADGE
-    + ' · <b style="color:var(--text)">' + esc(w.label) + '</b> · análisis profundo'
-    + ' · gráfico ' + (S.gran==='month'?'por mes':S.gran==='week'?'por semana':'por día') + '</div>';
-
+  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:11px">Teléfono ' + AC_BADGE + ' · <b style="color:var(--text)">' + esc(w.label) + '</b> · análisis profundo · gráfico ' + (gran==='month'?'por mes':gran==='week'?'por semana':'por día') + (S.weekAgent?' · ejecutivo filtrado':'') + '</div>';
   html += '<div class="cs-kgrid k4">';
-  html += kpiCard(st.rec.toLocaleString('es-CL'), 'Recibidas', st.ans + ' contest · ' + st.lost + ' perd', AC_RECV);
-  var abCol = acAbColor(st.abandPct);
-  html += '<div class="cs-kpi" style="border-color:' + abCol + '"><div class="bar" style="background:' + abCol + '"></div>'
-    + '<div class="v" style="color:' + abCol + '">' + acPctTxt(st.lost, st.rec) + '</div><div class="l">Abandono (bruto)</div>'
-    + '<div class="s">ajustado ' + acPctTxt(st.lost-st.lostCorto, st.rec-st.lostCorto) + ' (excl. ≤' + AC_ABAND_UMBRAL + 's)</div></div>';
-  html += kpiCard(acFmtSec(st.asa), 'Espera prom. (ASA)', 'p50 ' + acFmtSec(acPctil(st.asaArr,50)) + ' · p90 ' + acFmtSec(acPctil(st.asaArr,90)), AC_WAIT);
-  html += kpiCard(acFmtSec(st.talk), 'Duración conversación', st.talkN + ' contestadas (talk time)', '#6B4FBB');
+  html += acKpi(st.rec.toLocaleString('es-CL'), 'Recibidas', st.ans + ' contest · ' + st.lost + ' perd', AC_RECV);
+  html += acKpiAb(st, 'Abandono (bruto)', 'ajustado ' + acPctTxt(st.lost-st.lostCorto, st.rec-st.lostCorto) + ' (excl. ≤' + AC_ABAND_UMBRAL + 's)');
+  html += acKpi(acFmtSec(st.asa), 'Espera prom. (ASA)', 'p50 ' + acFmtSec(acPctil(st.asaArr,50)) + ' · p90 ' + acFmtSec(acPctil(st.asaArr,90)), AC_WAIT);
+  html += acKpi(acFmtSec(st.talk), 'Duración conversación', st.talkN + ' contestadas (prom)', '#6B4FBB');
   html += '</div>';
+  html += acCardsExtra(st, ex, true);
 
-  /* serie con granularidad elegida */
-  window.__acAnaBuckets = acBucketsGran(fromU, toU, S.gran || 'day');
+  window.__acAnaBuckets = acBucketsGran(fromU, toU, gran);
   html += '<div class="cs-h2">Volumen y abandono ' + AC_BADGE + '</div>' + chartCard('', 'cAcAna', 300);
+  html += '<div class="cs-h2">Patrón temporal por hora ' + AC_BADGE + '<span class="cs-h2s">entrantes vs salientes (total del rango)</span></div>' + chartCard('', 'cAcAnaIO', 260);
 
   /* percentiles de espera */
   html += '<div class="cs-h2">Distribución de la espera (ASA) ' + AC_BADGE + '<span class="cs-h2s">el promedio esconde la cola</span></div>'
@@ -3673,12 +3679,14 @@ function buildAcAnalisis(){
 
   /* rellamadas + off-hours */
   html += '<div class="cs-kgrid k4" style="margin-top:6px">';
-  html += kpiCard((cb.rellamadaPct==null?'—':cb.rellamadaPct+'%'), 'Tasa de rellamada (7d)', 'mismo nº vuelve a llamar · proxy de no-resolución', '#6B4FBB');
-  html += kpiCard(cb.perdidasSinReintento.toLocaleString('es-CL'), 'Perdidas sin reintento', 'daño real (7d)', AC_LOST);
-  html += kpiCard(acPctTxt(offRec, st.rec), 'Recibidas fuera de horario', offRec + ' llam. (L-V 8:30-20 · Sáb 8:30-13:30)', AC_WAIT);
-  html += kpiCard(acPctTxt(offLost, offRec), 'Abandono fuera de horario', offLost + ' de ' + offRec, AC_LOST);
+  html += acKpi((cb.rellamadaPct==null?'—':cb.rellamadaPct+'%'), 'Tasa de rellamada (7d)', 'proxy de no-resolución', '#6B4FBB');
+  html += acKpi(cb.perdidasSinReintento.toLocaleString('es-CL'), 'Perdidas sin reintento', 'daño real (7d)', AC_LOST);
+  html += acKpi(acPctTxt(offRec, st.rec), 'Recibidas fuera de horario', offRec + ' llam. (L-V 8:30-20·Sáb 8:30-13:30)', AC_WAIT);
+  html += acKpi(acPctTxt(offLost, offRec), 'Abandono fuera de horario', offLost + ' de ' + offRec, AC_LOST);
   html += '</div>';
 
+  html += acBloqueRazones(ex, st);
+  html += acBloqueTops(ex);
   html += acTablaPorMesa(rango, 'Abandono por mesa · ' + esc(w.label));
   return html;
 }
@@ -3686,77 +3694,42 @@ function buildAcAnalisis(){
 /* ============================ TAB POR MESA / LÍNEA (org) ============================ */
 function buildAcMesa(){
   var html = '<div class="cs-card" style="padding:14px 16px;margin-bottom:14px;border-left:3px solid var(--ic-naranjo);font-size:13px;color:var(--mut)">'
-    + '<b style="color:var(--text)">Análisis por cliente no disponible en Teléfono.</b> '
-    + 'Aircall no entrega la organización/razón social de quien llama. '
-    + 'El análisis por cliente real vive en el canal <b>Zendesk</b>. Aquí va el desglose <b>por mesa / línea</b> (el número Aircall marcado), que es lo disponible en telefonía.</div>';
+    + '<b style="color:var(--text)">Análisis por cliente no disponible en Teléfono.</b> Aircall no entrega la organización/razón social de quien llama. El análisis por cliente real vive en el canal <b>Zendesk</b>. Aquí va el desglose <b>por mesa / línea</b> (el número Aircall marcado).</div>';
   html += acTablaPorMesa(acSrc(), 'Por mesa / línea · histórico completo');
   return html;
 }
-
-/* tabla por mesa curada (excluye PII de agentes, números crudos, "Libre") */
 function acTablaPorMesa(calls, titulo){
   var byMesa = {}, excluidas = 0;
-  for (var i=0;i<calls.length;i++){ var c=calls[i];
-    if (c.direction!=='inbound') continue;
-    var nm = c.number_name;
-    if (acMesaExcluir(nm)){ excluidas++; continue; }
-    var m = byMesa[nm] = byMesa[nm] || { rec:0, ans:0, lost:0, asa:[], horas:{} };
-    m.rec++;
-    if (c.answered_at){ m.ans++; if(typeof c.frt_sec==='number') m.asa.push(c.frt_sec); }
-    else m.lost++;
-    if (typeof c.started_at==='number'){ var h=new Date(c.started_at*1000).getHours(); m.horas[h]=(m.horas[h]||0)+1; }
+  for (var i=0;i<calls.length;i++){ var c=calls[i]; if(c.direction!=='inbound')continue;
+    var nm=c.number_name; if(acMesaExcluir(nm)){excluidas++;continue;}
+    var m=byMesa[nm]=byMesa[nm]||{rec:0,ans:0,lost:0,asa:[],horas:{}};
+    m.rec++; if(c.answered_at){m.ans++; if(typeof c.frt_sec==='number')m.asa.push(c.frt_sec);} else m.lost++;
+    if(typeof c.started_at==='number'){var h=new Date(c.started_at*1000).getHours(); m.horas[h]=(m.horas[h]||0)+1;}
   }
-  var arr = Object.keys(byMesa).map(function(k){ return [k, byMesa[k]]; })
-    .filter(function(e){ return e[1].rec>0; })
-    .sort(function(a,b){ return b[1].rec - a[1].rec; });
-  if (!arr.length) return '';
-  var html = '<div class="cs-h2">' + esc(titulo) + ' ' + AC_BADGE
-    + '<span class="cs-h2s">mesa = número Aircall (no cliente) · clasificación fina pendiente de curar con la líder</span></div>'
-    + '<div class="cs-card"><table class="cs-t"><thead><tr><th>Mesa / línea</th>'
-    + acThC('Recibidas') + acThC('Contestación') + acThC('Abandono') + acThC('Espera (ASA)') + acThC('Hora pico') + '</tr></thead><tbody>';
-  for (var k=0;k<arr.length;k++){ var nm=arr[k][0], m=arr[k][1];
-    var asaAvg = m.asa.length ? m.asa.reduce(function(x,y){return x+y;},0)/m.asa.length : null;
-    var hp=null,hpv=-1; for (var h in m.horas){ if(m.horas[h]>hpv){hpv=m.horas[h];hp=h;} }
-    html += '<tr><td>' + esc(nm) + '</td>'
-      + acTdC(m.rec.toLocaleString('es-CL'))
-      + acTdC(acPctTxt(m.ans,m.rec))
-      + acTdAb(acPct(m.lost,m.rec))
-      + acTdC(acFmtSec(asaAvg))
-      + acTdC(hp!=null ? (acPad(parseInt(hp,10))+':00') : '—') + '</tr>';
-  }
-  html += '</tbody></table>';
-  if (excluidas>0) html += '<div style="font-size:11px;color:var(--mut);padding:8px 2px 0">Nota: ' + excluidas + ' llamadas en líneas no clasificables (nombres de agente, números sin etiqueta, "Libre") excluidas de esta vista.</div>';
-  html += '</div>';
+  var arr=Object.keys(byMesa).map(function(k){return [k,byMesa[k]];}).filter(function(e){return e[1].rec>0;}).sort(function(a,b){return b[1].rec-a[1].rec;});
+  if(!arr.length) return '';
+  var html='<div class="cs-h2">' + esc(titulo) + ' ' + AC_BADGE + '<span class="cs-h2s">mesa = número Aircall (no cliente) · clasificación fina pendiente con la líder</span></div>'
+    + '<div class="cs-card"><table class="cs-t"><thead><tr><th>Mesa / línea</th>' + acThC('Recibidas') + acThC('Contestación') + acThC('Abandono') + acThC('Espera (ASA)') + acThC('Hora pico') + '</tr></thead><tbody>';
+  arr.forEach(function(e){ var nm=e[0],m=e[1]; var asaAvg=m.asa.length?m.asa.reduce(function(x,y){return x+y;},0)/m.asa.length:null;
+    var hp=null,hpv=-1; for(var h in m.horas){if(m.horas[h]>hpv){hpv=m.horas[h];hp=h;}}
+    html+='<tr><td>'+esc(nm)+'</td>'+acTdC(m.rec.toLocaleString('es-CL'))+acTdC(acPctTxt(m.ans,m.rec))+acTdAb(acPct(m.lost,m.rec))+acTdC(acFmtSec(asaAvg))+acTdC(hp!=null?(acPad(parseInt(hp,10))+':00'):'—')+'</tr>'; });
+  html+='</tbody></table>';
+  if(excluidas>0) html+='<div style="font-size:11px;color:var(--mut);padding:8px 2px 0">Nota: '+excluidas+' llamadas en líneas no clasificables (agentes/números crudos/"Libre") excluidas.</div>';
+  html+='</div>';
   return html;
 }
 
-/* buckets para granularidad del gráfico de Análisis (day/week/month) */
+/* buckets para granularidad del gráfico (DST-safe: avance por componentes) */
 function acBucketsGran(fromU, toU, gran){
-  var out = [];
-  var d = new Date(fromU*1000); d = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
-  var guard = 0;
-  while (Math.floor(d.getTime()/1000) < toU && guard++ < 800){
+  var out=[]; var d=acMidnight(new Date(fromU*1000)); var guard=0;
+  while (acUnix(d) < toU && guard++ < 400){
     var bFrom, bTo, label;
-    if (gran === 'month'){
-      bFrom = new Date(d.getFullYear(), d.getMonth(), 1, 0,0,0,0);
-      bTo = new Date(d.getFullYear(), d.getMonth()+1, 1, 0,0,0,0);
-      label = MES[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
-      d = bTo;
-    } else if (gran === 'week'){
-      var dow = (d.getDay()+6)%7;
-      bFrom = new Date(d.getFullYear(), d.getMonth(), d.getDate()-dow, 0,0,0,0);
-      bTo = new Date(bFrom.getTime() + 7*86400000);
-      label = 'sem ' + fmtDM(bFrom);
-      d = bTo;
-    } else {
-      bFrom = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
-      bTo = new Date(bFrom.getTime() + 86400000);
-      label = fmtDM(bFrom);
-      d = bTo;
-    }
-    var st = acStats(acInRange(Math.floor(bFrom.getTime()/1000), Math.min(toU, Math.floor(bTo.getTime()/1000))));
-    out.push({ label:label, rec:st.rec, ans:st.ans, lost:st.lost, abandPct:st.abandPct,
-      isWeekend:(gran==='day' && (bFrom.getDay()===0||bFrom.getDay()===6)) });
+    if (gran==='month'){ bFrom=new Date(d.getFullYear(),d.getMonth(),1,0,0,0,0); bTo=new Date(d.getFullYear(),d.getMonth()+1,1,0,0,0,0); label=MES[d.getMonth()]+' '+String(d.getFullYear()).slice(2); }
+    else if (gran==='week'){ bFrom=acMonday(d); bTo=acAddDays(bFrom,7); label='sem '+fmtDM(bFrom); }
+    else { bFrom=acMidnight(d); bTo=acAddDays(bFrom,1); label=fmtDM(bFrom); }
+    var st=acStats(acInRange(acUnix(bFrom), Math.min(toU, acUnix(bTo))));
+    out.push({label:label, rec:st.rec, ans:st.ans, lost:st.lost, abandPct:st.abandPct, isWeekend:(gran==='day'&&(bFrom.getDay()===0||bFrom.getDay()===6))});
+    d = bTo;   /* avance por componentes (acAddDays/mes) → DST-safe */
   }
   return out;
 }
@@ -3764,69 +3737,78 @@ function acBucketsGran(fromU, toU, gran){
 /* ============================ CHARTS ============================ */
 function drawAircallCharts(){
   if (acGuard()) return;
-  if (S.tab === 'live') return drawAcLive();
-  if (S.tab === 'week') { drawAcWeek(); drawAcWeekTrend(); return; }
-  if (S.tab === 'org')  return;
-  return drawAcAna();
+  if (S.tab === 'live'){ drawAcLive(); drawAcIO('cAcLiveIO', acInRange(acUnix(acMidnight(new Date())), acUnix(new Date())), 'hora'); return; }
+  if (S.tab === 'week'){ drawAcWeekByDay(); drawAcWeekTrend(); var mon=semanaActual(); drawAcIO('cAcWeekIO', acInRange(acUnix(mon), Math.min(acUnix(acAddDays(mon,7)), acUnix(new Date()))), 'hora'); return; }
+  if (S.tab === 'org') return;
+  var w=computeAnaWindow(); drawAcAna(); drawAcIO('cAcAnaIO', acInRange(Math.floor(w.startMs/1000), Math.floor(w.endMs/1000)+1), 'hora');
 }
+/* curva intradía hoy + línea sem pasada */
 function drawAcLive(){
-  var now = new Date();
-  var hoy0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
-  var sem0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()-7, 0,0,0,0);
+  var now=new Date(); var hoy0=acMidnight(now), sem0=acAddDays(now,-7);
   var hAns=new Array(24).fill(0), hLost=new Array(24).fill(0), semRec=new Array(24).fill(0);
-  var hoyFrom=Math.floor(hoy0.getTime()/1000), nowU=Math.floor(now.getTime()/1000);
-  var semFrom=Math.floor(sem0.getTime()/1000), semTo=semFrom + (nowU-hoyFrom);
-  var src=acSrc();
-  for (var i=0;i<src.length;i++){ var c=src[i]; if(c.direction!=='inbound'||typeof c.started_at!=='number') continue;
-    var t=c.started_at;
-    if (t>=hoyFrom && t<nowU){ var h=new Date(t*1000).getHours(); if(c.answered_at)hAns[h]++; else hLost[h]++; }
-    else if (t>=semFrom && t<semTo){ semRec[new Date(t*1000).getHours()]++; }
-  }
-  var labels=[]; for (var x=0;x<24;x++) labels.push(acPad(x)+'h');
-  var semTot=semRec.map(function(_,i){ return semRec[i]; });
-  mkChart('cAcLive', { type:'bar', data:{ labels:labels, datasets:[
-      { type:'bar', label:'Contestadas', data:hAns, backgroundColor:AC_ANS, stack:'h' },
-      { type:'bar', label:'Perdidas', data:hLost, backgroundColor:AC_LOST, stack:'h' },
-      { type:'line', label:'Recibidas sem. pasada', data:semTot, borderColor:acAlpha(AC_RECV,.7), backgroundColor:acAlpha(AC_RECV,.7), borderDash:[5,4], pointRadius:0, tension:.3 }
-    ]}, options:{ plugins:{legend:baseLegend()}, scales:axisOpts(true) } });
+  var hoyFrom=acUnix(hoy0), nowU=acUnix(now), semFrom=acUnix(sem0), semTo=semFrom+(nowU-hoyFrom);
+  var src=acFiltroEjec(acSrc());
+  for (var i=0;i<src.length;i++){ var c=src[i]; if(c.direction!=='inbound'||typeof c.started_at!=='number')continue; var t=c.started_at;
+    if(t>=hoyFrom&&t<nowU){var h=new Date(t*1000).getHours(); if(c.answered_at)hAns[h]++; else hLost[h]++;}
+    else if(t>=semFrom&&t<semTo){semRec[new Date(t*1000).getHours()]++;} }
+  var labels=[]; for(var x=0;x<24;x++)labels.push(acPad(x)+'h');
+  mkChart('cAcLive',{type:'bar',data:{labels:labels,datasets:[
+    {type:'bar',label:'Contestadas',data:hAns,backgroundColor:AC_ANS,stack:'h'},
+    {type:'bar',label:'Perdidas',data:hLost,backgroundColor:AC_LOST,stack:'h'},
+    {type:'line',label:'Recibidas sem. pasada',data:semRec,borderColor:acAlpha(AC_RECV,.7),backgroundColor:acAlpha(AC_RECV,.7),borderDash:[5,4],pointRadius:0,tension:.3}
+  ]},options:{plugins:{legend:baseLegend()},scales:axisOpts(true)}});
 }
-function drawAcWeek(){
-  var mon = semanaActual();
-  var dates=[]; for (var i=0;i<7;i++) dates.push(new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i,0,0,0,0));
-  var serie=acSerieDias(dates);
-  mkChart('cAcWeek', { type:'bar', data:{ labels:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
-    datasets:[ {label:'Contestadas',data:serie.map(function(d){return d.ans;}),backgroundColor:AC_ANS,borderColor:AC_SEGB,borderWidth:1,stack:'w'},
-      {label:'Perdidas',data:serie.map(function(d){return d.lost;}),backgroundColor:AC_LOST,borderColor:AC_SEGB,borderWidth:1,stack:'w'} ]},
-    options:{ plugins:{legend:baseLegend(), tooltip:{mode:'index',intersect:false,callbacks:{footer:function(it){if(!it.length)return'';var d=serie[it[0].dataIndex];return 'Recibidas '+d.rec+' · Abandono '+acPctTxt(d.lost,d.rec);}}}}, scales:axisOpts(true) } });
+/* patrón temporal inbound/outbound por hora */
+function drawAcIO(id, calls, modo){
+  var hin=new Array(24).fill(0), hout=new Array(24).fill(0);
+  for (var i=0;i<calls.length;i++){ var c=calls[i]; if(typeof c.started_at!=='number')continue; var h=new Date(c.started_at*1000).getHours();
+    if(c.direction==='outbound')hout[h]++; else if(c.direction==='inbound')hin[h]++; }
+  var labels=[]; for(var x=0;x<24;x++)labels.push(acPad(x)+'h');
+  mkChart(id,{type:'bar',data:{labels:labels,datasets:[
+    {label:'Entrantes',data:hin,backgroundColor:AC_RECV},
+    {label:'Salientes',data:hout,backgroundColor:AC_OUT}
+  ]},options:{plugins:{legend:baseLegend()},scales:axisOpts(false)}});
 }
+/* semana por día: entrantes/salientes/atendidas */
+function drawAcWeekByDay(){
+  var mon=semanaActual(); var inb=new Array(7).fill(0), out=new Array(7).fill(0), ans=new Array(7).fill(0);
+  var monU=acUnix(mon), finU=acUnix(acAddDays(mon,7));
+  var src=acFiltroEjec(acSrc());
+  for (var i=0;i<src.length;i++){ var c=src[i]; if(typeof c.started_at!=='number')continue; var t=c.started_at; if(t<monU||t>=finU)continue;
+    var d=(new Date(t*1000).getDay()+6)%7;
+    if(c.direction==='outbound')out[d]++; else if(c.direction==='inbound'){inb[d]++; if(c.answered_at)ans[d]++;} }
+  mkChart('cAcWeek',{type:'bar',data:{labels:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],datasets:[
+    {label:'Entrantes',data:inb,backgroundColor:AC_RECV},
+    {label:'Atendidas',data:ans,backgroundColor:AC_ANS},
+    {label:'Salientes',data:out,backgroundColor:AC_OUT}
+  ]},options:{plugins:{legend:baseLegend()},scales:axisOpts(false)}});
+}
+/* tendencia 8 semanas (DST-safe) */
 function drawAcWeekTrend(){
-  var now=new Date(); var dow=(now.getDay()+6)%7;
-  var lun0=new Date(now.getFullYear(),now.getMonth(),now.getDate()-dow,0,0,0,0);
-  var labels=[], recs=[], abs=[];
+  var lun0=acMonday(new Date());
+  var labels=[],recs=[],abs=[];
   for (var w=7; w>=0; w--){
-    var f=new Date(lun0.getTime() - w*7*86400000);
-    var t=new Date(f.getTime() + 7*86400000);
-    var st=acStats(acInRange(Math.floor(f.getTime()/1000), Math.floor(t.getTime()/1000)));
+    var f=acAddDays(lun0, -w*7), t=acAddDays(f,7);
+    var st=acStats(acInRange(acUnix(f), acUnix(t)));
     labels.push(fmtDM(f)); recs.push(st.rec); abs.push(st.abandPct||0);
   }
-  mkChart('cAcWeekTrend', { type:'bar', data:{ labels:labels, datasets:[
-      { type:'bar', label:'Recibidas', data:recs, backgroundColor:acAlpha(AC_RECV,.75), yAxisID:'y', order:2 },
-      { type:'line', label:'% Abandono', data:abs, borderColor:AC_LOST, backgroundColor:AC_LOST, yAxisID:'y1', tension:.3, pointRadius:3, order:1 }
-    ]}, options:{ plugins:{legend:baseLegend()}, scales:{
-      x: axisOpts(false).x,
-      y: { position:'left', beginAtZero:true, ticks:{color:AXIS,font:{size:11}}, grid:{color:GRID} },
-      y1:{ position:'right', beginAtZero:true, max:100, ticks:{color:AXIS,font:{size:11},callback:function(v){return v+'%';}}, grid:{display:false} }
-    } } });
+  mkChart('cAcWeekTrend',{data:{labels:labels,datasets:[
+    {type:'bar',label:'Recibidas',data:recs,backgroundColor:acAlpha(AC_RECV,.75),yAxisID:'y',order:2},
+    {type:'line',label:'% Abandono',data:abs,borderColor:AC_LOST,backgroundColor:AC_LOST,yAxisID:'y1',tension:.3,pointRadius:3,order:1}
+  ]},options:{plugins:{legend:baseLegend()},scales:{
+    x:axisOpts(false).x,
+    y:{position:'left',beginAtZero:true,ticks:{color:AXIS,font:{size:11}},grid:{color:GRID}},
+    y1:{position:'right',beginAtZero:true,max:100,ticks:{color:AXIS,font:{size:11},callback:function(v){return v+'%';}},grid:{display:false}}
+  }}});
 }
 function drawAcAna(){
-  var b = window.__acAnaBuckets || [];
-  if (!b.length) return;
+  var b=window.__acAnaBuckets||[]; if(!b.length)return;
   var ansBg=b.map(function(x){return x.isWeekend?acAlpha(AC_ANS,.42):AC_ANS;});
   var lostBg=b.map(function(x){return x.isWeekend?acAlpha(AC_LOST,.42):AC_LOST;});
-  mkChart('cAcAna', { type:'bar', data:{ labels:b.map(function(x){return x.label;}),
-    datasets:[ {label:'Contestadas',data:b.map(function(x){return x.ans;}),backgroundColor:ansBg,borderColor:AC_SEGB,borderWidth:1,stack:'a'},
-      {label:'Perdidas',data:b.map(function(x){return x.lost;}),backgroundColor:lostBg,borderColor:AC_SEGB,borderWidth:1,stack:'a'} ]},
-    options:{ plugins:{legend:baseLegend(), tooltip:{mode:'index',intersect:false,callbacks:{footer:function(it){if(!it.length)return'';var d=b[it[0].dataIndex];return 'Recibidas '+d.rec+' · Abandono '+acPctTxt(d.lost,d.rec);}}}}, scales:axisOpts(true) } });
+  mkChart('cAcAna',{type:'bar',data:{labels:b.map(function(x){return x.label;}),datasets:[
+    {label:'Contestadas',data:b.map(function(x){return x.ans;}),backgroundColor:ansBg,borderColor:AC_SEGB,borderWidth:1,stack:'a'},
+    {label:'Perdidas',data:b.map(function(x){return x.lost;}),backgroundColor:lostBg,borderColor:AC_SEGB,borderWidth:1,stack:'a'}
+  ]},options:{plugins:{legend:baseLegend(),tooltip:{mode:'index',intersect:false,callbacks:{footer:function(it){if(!it.length)return'';var d=b[it[0].dataIndex];return 'Recibidas '+d.rec+' · Abandono '+acPctTxt(d.lost,d.rec);}}}},scales:axisOpts(true)}});
 }
 
 /* ============================================================

@@ -89,10 +89,10 @@ flowchart LR
 | Backend de orquestación | n8n self-hosted | `prod-low-code.iconstruye.dev` |
 | Base de datos | MongoDB Atlas (devqa cluster) | BD `automatizaciones` |
 | Cliente del panel | HTML/CSS/JS vanilla con IndexedDB | Workflow `CS View` en n8n |
-| Scripts de operación | Python 3.13 + pymongo + requests | (repo único pendiente) |
-| Carga inicial | `carga_inicial.py` + `populate_mongo_from_seed.py` | (repo único pendiente) |
-| Setup workflows | `setup_v2_workflows.py` | (repo único pendiente) |
-| Snapshot/rollback workflows | `snapshot_workflow.py` | (repo único pendiente) |
+| Scripts de operación | Python 3.13 + pymongo + requests | repos_github/panelcs/scripts/ |
+| Carga inicial | `carga_inicial.py` + `populate_mongo_from_seed.py` | repos_github/panelcs/scripts/ |
+| Setup workflows | `setup_v2_workflows.py` | repos_github/panelcs/scripts/ |
+| Snapshot/rollback workflows | `snapshot_workflow.py` | repos_github/panelcs/scripts/ |
 
 ## Decisiones clave tomadas
 

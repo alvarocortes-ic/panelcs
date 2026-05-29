@@ -106,7 +106,7 @@
 
 ### Issue 4.2 — BRECHA 1: Enrich FRT/SLA en Schedule CS Data v2 🟡
 
-- ✅ Snapshot del workflow guardado (`outputs/cs-panel/snapshots/20260528-180636-cs-data-v2-mongo-eOarJPeIeUPI45de.json`) para rollback.
+- ✅ Snapshot del workflow guardado (`repos_github/panelcs/snapshots/20260528-180636-cs-data-v2-mongo-eOarJPeIeUPI45de.json`) para rollback.
 - ✅ Pre-armar patch en `setup_v2_workflows.py`: 3 nodos nuevos (`Collect Enrich Chunks`, `Zendesk show_many`, `Enrich Merge`).
 - ✅ Validación dry-run: 15 nodos generados (era 12), conexiones correctas, sintaxis Python OK.
 - ✅ Fixes preventivos: `waitBetweenRequests: 60000`, `onError: continueRegularOutput`, JS tolera response con error.
@@ -146,24 +146,24 @@
 
 ### Issue 5.1 — Docs Linear ✅
 
-- ✅ Description del proyecto (`outputs/cs-panel/docs/linear/description.md`).
+- ✅ Description del proyecto (`repos_github/panelcs/docs/linear/description.md`).
 - ✅ ToDos + Milestones organizados (este archivo).
 
-### Issue 5.2 — Docs Notion 🟡
+### Issue 5.2 — Docs Notion ✅
 
 - ✅ Generar MD para Notion `Panel-CS-versi-n-n8n` (doc técnica).
 - ✅ Generar MD para Notion `Panel-KPIs-Customer-Service` (estructura 1-7).
-- 🔴 Pegar contenido en Notion (acción manual del usuario).
+- ✅ Pegar/enriquecer contenido en Notion (2026-05-29): doc técnica actualizada (refs + changelog) + proyecto general con estructura híbrida.
 
-### Issue 5.3 — Repo único en GitHub `panel-cs` 🔴
+### Issue 5.3 — Repo único en GitHub `panelcs` ✅
 
-- 🔴 Crear repo `panel-cs` privado en cuenta personal `alvarocortes-ic`.
-- 🔴 Configurar `git config user.email/name` local del repo (autoría usuario, sin Co-Authored-By Claude).
-- 🔴 Inicializar estructura: `scripts/` ← scripts Python, `workflows/` ← snapshots n8n, `client/` ← css+js+html, `docs/` ← linear+notion+lessons.
-- 🔴 Convención de commits: español, mensajes claros, sin Co-Authored-By Claude.
-- 🔴 Migrar contenido relevante desde `outputs/cs-panel/` del workspace ICClaude.
-- 🔴 Crear README.md con onboarding rápido.
-- 🔴 Primer push del repo.
+- ✅ Crear repo `panelcs` privado en cuenta personal `alvarocortes-ic`.
+- ✅ Migrar contenido desde `outputs/cs-panel/` del workspace ICClaude a `repos_github/panelcs/` (al nivel de ICClaude).
+- ✅ Refactor de rutas en 32 scripts: `parents[1]` como raíz + credenciales desde `../ICClaude/.env.credentials` (fuente única).
+- ✅ Recrear `.venv` + validar script end-to-end (`list_workflows.py`).
+- ✅ `git rm` de `outputs/cs-panel/` en ICClaude + actualizar refs del vault.
+- ✅ Push del refactor (commit `21924ce`).
+- 🔴 README.md de onboarding (revisar si el existente cubre).
 
 ---
 

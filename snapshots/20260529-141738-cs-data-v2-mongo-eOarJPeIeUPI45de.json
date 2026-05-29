@@ -1,0 +1,1076 @@
+{
+  "updatedAt": "2026-05-29T02:11:28.292Z",
+  "createdAt": "2026-05-28T19:48:17.218Z",
+  "id": "eOarJPeIeUPI45de",
+  "name": "CS Data v2 (Mongo)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "csdatav2-wh",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        200,
+        200
+      ],
+      "webhookId": "cs-data-v2-wh",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cs-data",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "csdatav2-parse",
+      "name": "Parse since",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// Parsea ?since=<unix seconds> del webhook. Default: now - 1h.\n// Devuelve sinceISO string — el query Mongo lo envuelve en Extended JSON {$date}.\nconst q = $input.first().json.query || {};\nconst sinceRaw = q.since;\nlet since;\nif (sinceRaw && !isNaN(parseInt(sinceRaw, 10))) {\n  since = parseInt(sinceRaw, 10);\n} else {\n  since = Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { since, sinceISO: new Date(since * 1000).toISOString() } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "csdatav2-find",
+      "name": "Find Deltas Mongo",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        200
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "find",
+        "collection": "PanelCSTickets",
+        "query": "={{ JSON.stringify({ updatedAtUnix: { \"$gte\": $json.since } }) }}",
+        "options": {
+          "limit": 50000,
+          "sort": "={\"updatedAtUnix\":1}"
+        }
+      }
+    },
+    {
+      "id": "csdatav2-map",
+      "name": "Map to snake_case",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// Convierte docs Mongo (camelCase) a snake_case que espera el cliente del panel.\n// También extrae lookups del staticData del workflow (groups/agents/orgs) si están,\n// o devuelve dicts vacíos (el cliente los mergea con lo que ya tiene).\nfunction isoToUnix(d) {\n  if (!d) return null;\n  if (typeof d === 'string') return Math.floor(new Date(d).getTime() / 1000);\n  if (d instanceof Date) return Math.floor(d.getTime() / 1000);\n  return null;\n}\nfunction dateToIso(d) {\n  if (!d) return null;\n  if (typeof d === 'string') return d;\n  if (d instanceof Date) return d.toISOString();\n  return null;\n}\nconst docs = items.map(it => it.json);\nconst tickets = docs.map(d => ({\n  id: d.ticketId,\n  subject: d.subject || '',\n  status: d.status,\n  priority: d.priority,\n  type: d.type,\n  created_at: dateToIso(d.createdAt),\n  updated_at: dateToIso(d.updatedAt),\n  solved_at: dateToIso(d.solvedAt),\n  closed_at: dateToIso(d.closedAt),\n  frt_min: d.frtMin,\n  reopens: d.reopens,\n  group_id: d.groupId,\n  assignee_id: d.assigneeId,\n  organization_id: d.organizationId,\n  sla_breached: d.slaBreached,\n  sla_active_breaches: (d.slaActiveBreaches || []).map(b => ({\n    metric: b.metric, stage: b.stage, breach_at: dateToIso(b.breachAt),\n  })),\n  nivel: d.nivel,\n  seguimiento: d.seguimiento,\n  merged: d.merged,\n  csat: d.csat,\n  linea_negocio: d.lineaNegocio,\n  categoria: d.categoria,\n  producto: d.producto,\n  subproducto: d.subproducto,\n  paso_sn1: d.pasoSn1,\n  esc_sn2: d.escSn2,\n  esc_mo: d.escMo,\n  devol: d.devol,\n  via_channel: d.viaChannel,\n  canal_normalizado: d.canalNormalizado,\n  chat_subtype: d.chatSubtype,\n  aircall_call_id: d.aircallCallId,\n}));\n// max updatedAt como cursor para el próximo sync del cliente\nlet maxUpdated = 0;\ndocs.forEach(d => {\n  const u = isoToUnix(d.updatedAt);\n  if (u && u > maxUpdated) maxUpdated = u;\n});\nreturn [{ json: {\n  tickets,\n  groups_by_id: {},\n  agents_by_id: {},\n  orgs_by_id: {},\n  synced_until_unix: maxUpdated || Math.floor(Date.now() / 1000),\n  count: tickets.length,\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "csdatav2-sched",
+      "name": "Cada 5 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        500
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "csdatav2-readcursor",
+      "name": "Read Cursor",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        500
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "find",
+        "collection": "PanelCSMeta",
+        "query": "={{ JSON.stringify({key:'csDataCursor'}) }}",
+        "options": {
+          "limit": 1
+        }
+      }
+    },
+    {
+      "id": "csdatav2-fallback",
+      "name": "Cursor or Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        530,
+        500
+      ],
+      "parameters": {
+        "jsCode": "// Si Read Cursor devolvio 0 items (primer run o cursor borrado), usar\n// fallback = now - 1h. Si devolvio doc, extraer el value.\nconst items = $input.all();\nlet cursor;\nif (items.length === 0 || !items[0].json || items[0].json.value == null) {\n  cursor = Math.floor(Date.now() / 1000) - 3600;\n} else {\n  cursor = parseInt(items[0].json.value, 10) || Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { value: cursor, startTime: cursor } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "csdatav2-zendesk",
+      "name": "Zendesk Incremental",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        500
+      ],
+      "credentials": {
+        "zendeskApi": {
+          "id": "68yjtB8sha7fDhHj",
+          "name": "Zendesk Prod"
+        }
+      },
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "method": "GET",
+        "url": "https://iconstruye.zendesk.com/api/v2/incremental/tickets/cursor.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_time",
+              "value": "={{ $json.startTime }}"
+            },
+            {
+              "name": "include",
+              "value": "users,groups,organizations"
+            },
+            {
+              "name": "per_page",
+              "value": "1000"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ $response.body.after_url }}",
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $response.body.end_of_stream === true }}",
+              "limitPagesFetched": true,
+              "maxRequests": 5
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "csdatav2-slim",
+      "name": "Slim + Map camelCase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        500
+      ],
+      "parameters": {
+        "jsCode": "// Slim + map a camelCase. Replica slim_ticket() de carga_inicial.py.\n// Input: items con { ticket: <Zendesk raw> } (vienen del paginado de incremental).\n// Output: 1 item por ticket en formato Mongo camelCase listo para upsert.\n\n// IDs custom fields (sincronizar con carga_inicial.py si cambian)\nconst NIVEL_FID = 4556868682267, SEG_FID = 4557078676251, LN_FID = 11490690310939;\nconst SUBPROD_FID = 4746276837787, AIRCALL_CALL_FID = 16444628344091;\nconst CAT_FIDS = [4557429365019, 4572814010395, 4573134023067, 4573299675035,\n                  4573306776347, 4573320613787, 4573317518875];\nconst PROD_FIDS = [4704444587547, 4613114080283, 4620916990747, 4621021765275,\n                   4632374902299, 4632877917083, 4672260597659];\nconst NORMALIZE_CHANNEL = { api:'Teléfono', chat:'Chat', email:'Correo', web:'Correo', whatsapp:'Whatsapp' };\n\nfunction cf(t, fid) {\n  for (const c of (t.custom_fields || [])) if (c.id === fid) return c.value;\n  return null;\n}\nfunction cfFirst(t, fids) {\n  for (const f of fids) { const v = cf(t, f); if (v) return v; }\n  return null;\n}\nfunction parseIso(s) {\n  if (!s) return null;\n  return new Date(s);\n}\nfunction chatSubtype(via, tags, channel) {\n  if (channel !== 'chat') return null;\n  const tagsSet = new Set(tags || []);\n  if (tagsSet.has('sodexo')) return 'sodexo';\n  if (tagsSet.has('offline')) return 'offline';\n  if (tagsSet.has('sn1')) return 'sn1';\n  if (tagsSet.has('portal_proveedores')) return 'portal_proveedores';\n  return 'general';\n}\n\nconst tickets = $input.all().flatMap(i => (i.json.tickets || []));\nconst out = [];\nconst nowUnix = Math.floor(Date.now() / 1000);\nfor (const t of tickets) {\n  if (t.status === 'deleted') continue;\n  const viaChannel = ((t.via && t.via.channel) || '').toLowerCase();\n  const tags = t.tags || [];\n  const updatedAt = parseIso(t.updated_at);\n  const createdAt = parseIso(t.created_at);\n  const aircallRaw = cf(t, AIRCALL_CALL_FID);\n  out.push({ json: {\n    ticketId: t.id,\n    subject: t.subject || '',\n    status: t.status,\n    priority: t.priority,\n    type: t.type,\n    createdAt,\n    updatedAt,\n    createdAtUnix: createdAt ? Math.floor(createdAt.getTime() / 1000) : null,\n    updatedAtUnix: updatedAt ? Math.floor(updatedAt.getTime() / 1000) : null,\n    solvedAt: null,    // se llena en enrich (no en incremental crudo)\n    closedAt: null,\n    frtMin: null,\n    reopens: null,\n    groupId: t.group_id != null ? String(t.group_id) : null,\n    assigneeId: t.assignee_id != null ? String(t.assignee_id) : null,\n    organizationId: t.organization_id != null ? String(t.organization_id) : null,\n    slaBreached: null,         // se evalúa en enrich\n    slaActiveBreaches: [],\n    nivel: (function(){ const v = cf(t, NIVEL_FID); return v ? String(v).toLowerCase() : null; })(),\n    seguimiento: !!cf(t, SEG_FID),\n    merged: (tags || []).includes('closed_by_merge'),\n    csat: (t.satisfaction_rating && t.satisfaction_rating.score) || null,\n    lineaNegocio: cf(t, LN_FID),\n    categoria: cfFirst(t, CAT_FIDS),\n    producto: cfFirst(t, PROD_FIDS),\n    subproducto: cf(t, SUBPROD_FID),\n    pasoSn1: null,    // se computa en Fase 3b con ticket_events\n    escSn2: null,\n    escMo: null,\n    devol: null,\n    viaChannel: viaChannel || null,\n    canalNormalizado: NORMALIZE_CHANNEL[viaChannel] || 'Otros',\n    chatSubtype: chatSubtype(t.via, tags, viaChannel),\n    aircallCallId: (function(){\n      if (aircallRaw == null) return null;\n      const s = String(aircallRaw).trim();\n      return /^\\d+$/.test(s) ? parseInt(s, 10) : null;\n    })(),\n    _syncedAt: new Date(),\n    _syncSource: 'cs-data-v2-schedule',\n  } });\n}\nreturn out;",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "csdatav2-collect-enrich",
+      "name": "Collect Enrich Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const tickets = $input.all().map(i => i.json);\nconst CHUNK = 100;\nconst out = [];\nfor (let i = 0; i < tickets.length; i += CHUNK) {\n  const chunk = tickets.slice(i, i + CHUNK);\n  const ids = chunk.map(t => t.ticketId).filter(id => id != null).join(',');\n  if (ids) out.push({ json: { ids } });\n}\nreturn out;",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "csdatav2-showmany",
+      "name": "Zendesk show_many",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        500
+      ],
+      "credentials": {
+        "zendeskApi": {
+          "id": "68yjtB8sha7fDhHj",
+          "name": "Zendesk Prod"
+        }
+      },
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "method": "GET",
+        "url": "https://iconstruye.zendesk.com/api/v2/tickets/show_many.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ids",
+              "value": "={{ $json.ids }}"
+            },
+            {
+              "name": "include",
+              "value": "slas,metric_sets"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "retry": {
+            "retry": {
+              "maxRequests": 3,
+              "waitBetweenRequests": 60000
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "csdatav2-enrich-merge",
+      "name": "Enrich Merge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const nowIso = new Date().toISOString();\n\n// 1) Acumular metric_sets + policy_metrics de TODOS los chunks que llegaron.\n//    Tolera items con error (onError=continueRegularOutput del HTTP node):\n//    si un chunk falló, su item llega como { error: \"...\", ...} o sin tickets.\n//    Esos chunks se ignoran y los tickets correspondientes se emiten sin enrich.\nconst enrichMap = new Map();\nlet chunksOk = 0, chunksErr = 0;\nfor (const item of $input.all()) {\n  const resp = item.json || {};\n  if (resp.error || (!resp.tickets && !resp.metric_sets)) {\n    chunksErr++;\n    continue;\n  }\n  const tks = resp.tickets || [];\n  const ms  = resp.metric_sets || [];\n  const msById = new Map();\n  for (const m of ms) msById.set(m.ticket_id, m);\n  for (const tk of tks) {\n    const policyMetrics = (tk.slas && tk.slas.policy_metrics) || [];\n    enrichMap.set(tk.id, { metric: msById.get(tk.id) || {}, policyMetrics });\n  }\n  chunksOk++;\n}\nconsole.log(`[enrich-merge] chunks ok=${chunksOk} err=${chunksErr} tickets_enriched=${enrichMap.size}`);\n\nfunction slaBreachedFn(policyMetrics, nowIsoLocal, solvedAtIso) {\n  if (!policyMetrics || policyMetrics.length === 0) return false;\n  if (solvedAtIso) {\n    return policyMetrics.some(p => p.breach_at && p.breach_at < solvedAtIso);\n  }\n  return policyMetrics.some(p => p.stage === 'active' && p.breach_at && p.breach_at < nowIsoLocal);\n}\n\nfunction slaActiveBreachesFn(policyMetrics) {\n  return (policyMetrics || [])\n    .filter(p => (p.stage === 'active' || p.stage === 'paused') && p.breach_at)\n    .map(p => ({ metric: p.metric, stage: p.stage, breachAt: new Date(p.breach_at) }));\n}\n\n// 2) Aplicar enrich a los tickets originales del Slim+Map (referencia cross-node)\nconst originals = $('Slim + Map camelCase').all().map(i => i.json);\nconst out = [];\nfor (const t of originals) {\n  const e = enrichMap.get(t.ticketId);\n  if (e) {\n    const m = e.metric || {};\n    const solvedAtIso = m.solved_at || null;\n    const rtm = m.reply_time_in_minutes;\n    const frtMin = (rtm && rtm.calendar != null) ? rtm.calendar : null;\n    out.push({ json: {\n      ...t,\n      frtMin: frtMin,\n      reopens: m.reopens != null ? m.reopens : null,\n      solvedAt: solvedAtIso ? new Date(solvedAtIso) : t.solvedAt,\n      slaBreached: slaBreachedFn(e.policyMetrics, nowIso, solvedAtIso),\n      slaActiveBreaches: slaActiveBreachesFn(e.policyMetrics),\n    } });\n  } else {\n    // ticket no enriquecido (show_many no devolvió ese ID — raro). Lo emite sin enrich.\n    out.push({ json: t });\n  }\n}\nreturn out;",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "csdatav2-upsert",
+      "name": "Upsert PanelCSTickets",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1620,
+        500
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "update",
+        "collection": "PanelCSTickets",
+        "updateKey": "ticketId",
+        "fields": "ticketId,subject,status,priority,type,createdAt,updatedAt,createdAtUnix,updatedAtUnix,solvedAt,closedAt,frtMin,reopens,groupId,assigneeId,organizationId,slaBreached,slaActiveBreaches,nivel,seguimiento,merged,csat,lineaNegocio,categoria,producto,subproducto,pasoSn1,escSn2,escMo,devol,viaChannel,canalNormalizado,chatSubtype,aircallCallId,_syncedAt,_syncSource",
+        "options": {
+          "upsert": true
+        }
+      }
+    },
+    {
+      "id": "csdatav2-savecursor",
+      "name": "Save Cursor",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1840,
+        500
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "update",
+        "collection": "PanelCSMeta",
+        "updateKey": "key",
+        "fields": "key,value,updatedAt,notes",
+        "options": {
+          "upsert": true
+        }
+      }
+    },
+    {
+      "id": "csdatav2-cursorout",
+      "name": "Prepare New Cursor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        700
+      ],
+      "parameters": {
+        "jsCode": "// Toma el batch ya upserted y construye el doc del cursor nuevo.\n// El cursor es el max updatedAtUnix del batch (o now - 60 si batch vacío).\nlet maxUnix = 0;\nfor (const it of $input.all()) {\n  const u = it.json.updatedAtUnix;\n  if (typeof u === 'number' && u > maxUnix) maxUnix = u;\n}\nif (!maxUnix) maxUnix = Math.floor(Date.now() / 1000) - 60;\n// Restar 60s de overlap para no perder tickets que cruzaron el boundary\nconst newCursor = maxUnix - 60;\nreturn [{ json: {\n  key: 'csDataCursor',\n  value: newCursor,\n  updatedAt: new Date(),\n  notes: 'Auto-updated by CS Data v2 schedule (max updatedAtUnix - 60s overlap)',\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse since",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse since": {
+      "main": [
+        [
+          {
+            "node": "Find Deltas Mongo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cada 5 min": {
+      "main": [
+        [
+          {
+            "node": "Read Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cursor": {
+      "main": [
+        [
+          {
+            "node": "Cursor or Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cursor or Fallback": {
+      "main": [
+        [
+          {
+            "node": "Zendesk Incremental",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zendesk Incremental": {
+      "main": [
+        [
+          {
+            "node": "Slim + Map camelCase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slim + Map camelCase": {
+      "main": [
+        [
+          {
+            "node": "Collect Enrich Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Enrich Chunks": {
+      "main": [
+        [
+          {
+            "node": "Zendesk show_many",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zendesk show_many": {
+      "main": [
+        [
+          {
+            "node": "Enrich Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Merge": {
+      "main": [
+        [
+          {
+            "node": "Upsert PanelCSTickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert PanelCSTickets": {
+      "main": [
+        [
+          {
+            "node": "Prepare New Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare New Cursor": {
+      "main": [
+        [
+          {
+            "node": "Save Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Deltas Mongo": {
+      "main": [
+        [
+          {
+            "node": "Map to snake_case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveExecutionProgress": false,
+    "executionTimeout": 240,
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Cada 5 min": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+  "activeVersionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+  "versionCounter": 36,
+  "triggerCount": 2,
+  "shared": [
+    {
+      "updatedAt": "2026-05-28T19:48:17.218Z",
+      "createdAt": "2026-05-28T19:48:17.218Z",
+      "role": "workflow:owner",
+      "workflowId": "eOarJPeIeUPI45de",
+      "projectId": "o6NFhAZBieSxzM9V",
+      "project": {
+        "updatedAt": "2026-04-29T14:17:41.635Z",
+        "createdAt": "2026-04-29T14:13:59.888Z",
+        "id": "o6NFhAZBieSxzM9V",
+        "name": "Alvaro Cortés <alvaro.cortes@iconstruye.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-29T02:11:28.293Z",
+    "createdAt": "2026-05-29T02:11:28.293Z",
+    "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+    "workflowId": "eOarJPeIeUPI45de",
+    "nodes": [
+      {
+        "id": "csdatav2-wh",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          200,
+          200
+        ],
+        "webhookId": "cs-data-v2-wh",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "cs-data",
+          "responseMode": "lastNode"
+        }
+      },
+      {
+        "id": "csdatav2-parse",
+        "name": "Parse since",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          420,
+          200
+        ],
+        "parameters": {
+          "jsCode": "// Parsea ?since=<unix seconds> del webhook. Default: now - 1h.\n// Devuelve sinceISO string — el query Mongo lo envuelve en Extended JSON {$date}.\nconst q = $input.first().json.query || {};\nconst sinceRaw = q.since;\nlet since;\nif (sinceRaw && !isNaN(parseInt(sinceRaw, 10))) {\n  since = parseInt(sinceRaw, 10);\n} else {\n  since = Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { since, sinceISO: new Date(since * 1000).toISOString() } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "csdatav2-find",
+        "name": "Find Deltas Mongo",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          640,
+          200
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "find",
+          "collection": "PanelCSTickets",
+          "query": "={{ JSON.stringify({ updatedAtUnix: { \"$gte\": $json.since } }) }}",
+          "options": {
+            "limit": 50000,
+            "sort": "={\"updatedAtUnix\":1}"
+          }
+        }
+      },
+      {
+        "id": "csdatav2-map",
+        "name": "Map to snake_case",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          860,
+          200
+        ],
+        "parameters": {
+          "jsCode": "// Convierte docs Mongo (camelCase) a snake_case que espera el cliente del panel.\n// También extrae lookups del staticData del workflow (groups/agents/orgs) si están,\n// o devuelve dicts vacíos (el cliente los mergea con lo que ya tiene).\nfunction isoToUnix(d) {\n  if (!d) return null;\n  if (typeof d === 'string') return Math.floor(new Date(d).getTime() / 1000);\n  if (d instanceof Date) return Math.floor(d.getTime() / 1000);\n  return null;\n}\nfunction dateToIso(d) {\n  if (!d) return null;\n  if (typeof d === 'string') return d;\n  if (d instanceof Date) return d.toISOString();\n  return null;\n}\nconst docs = items.map(it => it.json);\nconst tickets = docs.map(d => ({\n  id: d.ticketId,\n  subject: d.subject || '',\n  status: d.status,\n  priority: d.priority,\n  type: d.type,\n  created_at: dateToIso(d.createdAt),\n  updated_at: dateToIso(d.updatedAt),\n  solved_at: dateToIso(d.solvedAt),\n  closed_at: dateToIso(d.closedAt),\n  frt_min: d.frtMin,\n  reopens: d.reopens,\n  group_id: d.groupId,\n  assignee_id: d.assigneeId,\n  organization_id: d.organizationId,\n  sla_breached: d.slaBreached,\n  sla_active_breaches: (d.slaActiveBreaches || []).map(b => ({\n    metric: b.metric, stage: b.stage, breach_at: dateToIso(b.breachAt),\n  })),\n  nivel: d.nivel,\n  seguimiento: d.seguimiento,\n  merged: d.merged,\n  csat: d.csat,\n  linea_negocio: d.lineaNegocio,\n  categoria: d.categoria,\n  producto: d.producto,\n  subproducto: d.subproducto,\n  paso_sn1: d.pasoSn1,\n  esc_sn2: d.escSn2,\n  esc_mo: d.escMo,\n  devol: d.devol,\n  via_channel: d.viaChannel,\n  canal_normalizado: d.canalNormalizado,\n  chat_subtype: d.chatSubtype,\n  aircall_call_id: d.aircallCallId,\n}));\n// max updatedAt como cursor para el próximo sync del cliente\nlet maxUpdated = 0;\ndocs.forEach(d => {\n  const u = isoToUnix(d.updatedAt);\n  if (u && u > maxUpdated) maxUpdated = u;\n});\nreturn [{ json: {\n  tickets,\n  groups_by_id: {},\n  agents_by_id: {},\n  orgs_by_id: {},\n  synced_until_unix: maxUpdated || Math.floor(Date.now() / 1000),\n  count: tickets.length,\n} }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "csdatav2-sched",
+        "name": "Cada 5 min",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          500
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 5
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "csdatav2-readcursor",
+        "name": "Read Cursor",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          500
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "find",
+          "collection": "PanelCSMeta",
+          "query": "={{ JSON.stringify({key:'csDataCursor'}) }}",
+          "options": {
+            "limit": 1
+          }
+        }
+      },
+      {
+        "id": "csdatav2-fallback",
+        "name": "Cursor or Fallback",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          530,
+          500
+        ],
+        "parameters": {
+          "jsCode": "// Si Read Cursor devolvio 0 items (primer run o cursor borrado), usar\n// fallback = now - 1h. Si devolvio doc, extraer el value.\nconst items = $input.all();\nlet cursor;\nif (items.length === 0 || !items[0].json || items[0].json.value == null) {\n  cursor = Math.floor(Date.now() / 1000) - 3600;\n} else {\n  cursor = parseInt(items[0].json.value, 10) || Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { value: cursor, startTime: cursor } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "csdatav2-zendesk",
+        "name": "Zendesk Incremental",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          780,
+          500
+        ],
+        "credentials": {
+          "zendeskApi": {
+            "id": "68yjtB8sha7fDhHj",
+            "name": "Zendesk Prod"
+          }
+        },
+        "parameters": {
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "zendeskApi",
+          "method": "GET",
+          "url": "https://iconstruye.zendesk.com/api/v2/incremental/tickets/cursor.json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "start_time",
+                "value": "={{ $json.startTime }}"
+              },
+              {
+                "name": "include",
+                "value": "users,groups,organizations"
+              },
+              {
+                "name": "per_page",
+                "value": "1000"
+              }
+            ]
+          },
+          "options": {
+            "pagination": {
+              "pagination": {
+                "paginationMode": "responseContainsNextURL",
+                "nextURL": "={{ $response.body.after_url }}",
+                "paginationCompleteWhen": "other",
+                "completeExpression": "={{ $response.body.end_of_stream === true }}",
+                "limitPagesFetched": true,
+                "maxRequests": 5
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "csdatav2-slim",
+        "name": "Slim + Map camelCase",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          860,
+          500
+        ],
+        "parameters": {
+          "jsCode": "// Slim + map a camelCase. Replica slim_ticket() de carga_inicial.py.\n// Input: items con { ticket: <Zendesk raw> } (vienen del paginado de incremental).\n// Output: 1 item por ticket en formato Mongo camelCase listo para upsert.\n\n// IDs custom fields (sincronizar con carga_inicial.py si cambian)\nconst NIVEL_FID = 4556868682267, SEG_FID = 4557078676251, LN_FID = 11490690310939;\nconst SUBPROD_FID = 4746276837787, AIRCALL_CALL_FID = 16444628344091;\nconst CAT_FIDS = [4557429365019, 4572814010395, 4573134023067, 4573299675035,\n                  4573306776347, 4573320613787, 4573317518875];\nconst PROD_FIDS = [4704444587547, 4613114080283, 4620916990747, 4621021765275,\n                   4632374902299, 4632877917083, 4672260597659];\nconst NORMALIZE_CHANNEL = { api:'Teléfono', chat:'Chat', email:'Correo', web:'Correo', whatsapp:'Whatsapp' };\n\nfunction cf(t, fid) {\n  for (const c of (t.custom_fields || [])) if (c.id === fid) return c.value;\n  return null;\n}\nfunction cfFirst(t, fids) {\n  for (const f of fids) { const v = cf(t, f); if (v) return v; }\n  return null;\n}\nfunction parseIso(s) {\n  if (!s) return null;\n  return new Date(s);\n}\nfunction chatSubtype(via, tags, channel) {\n  if (channel !== 'chat') return null;\n  const tagsSet = new Set(tags || []);\n  if (tagsSet.has('sodexo')) return 'sodexo';\n  if (tagsSet.has('offline')) return 'offline';\n  if (tagsSet.has('sn1')) return 'sn1';\n  if (tagsSet.has('portal_proveedores')) return 'portal_proveedores';\n  return 'general';\n}\n\nconst tickets = $input.all().flatMap(i => (i.json.tickets || []));\nconst out = [];\nconst nowUnix = Math.floor(Date.now() / 1000);\nfor (const t of tickets) {\n  if (t.status === 'deleted') continue;\n  const viaChannel = ((t.via && t.via.channel) || '').toLowerCase();\n  const tags = t.tags || [];\n  const updatedAt = parseIso(t.updated_at);\n  const createdAt = parseIso(t.created_at);\n  const aircallRaw = cf(t, AIRCALL_CALL_FID);\n  out.push({ json: {\n    ticketId: t.id,\n    subject: t.subject || '',\n    status: t.status,\n    priority: t.priority,\n    type: t.type,\n    createdAt,\n    updatedAt,\n    createdAtUnix: createdAt ? Math.floor(createdAt.getTime() / 1000) : null,\n    updatedAtUnix: updatedAt ? Math.floor(updatedAt.getTime() / 1000) : null,\n    solvedAt: null,    // se llena en enrich (no en incremental crudo)\n    closedAt: null,\n    frtMin: null,\n    reopens: null,\n    groupId: t.group_id != null ? String(t.group_id) : null,\n    assigneeId: t.assignee_id != null ? String(t.assignee_id) : null,\n    organizationId: t.organization_id != null ? String(t.organization_id) : null,\n    slaBreached: null,         // se evalúa en enrich\n    slaActiveBreaches: [],\n    nivel: (function(){ const v = cf(t, NIVEL_FID); return v ? String(v).toLowerCase() : null; })(),\n    seguimiento: !!cf(t, SEG_FID),\n    merged: (tags || []).includes('closed_by_merge'),\n    csat: (t.satisfaction_rating && t.satisfaction_rating.score) || null,\n    lineaNegocio: cf(t, LN_FID),\n    categoria: cfFirst(t, CAT_FIDS),\n    producto: cfFirst(t, PROD_FIDS),\n    subproducto: cf(t, SUBPROD_FID),\n    pasoSn1: null,    // se computa en Fase 3b con ticket_events\n    escSn2: null,\n    escMo: null,\n    devol: null,\n    viaChannel: viaChannel || null,\n    canalNormalizado: NORMALIZE_CHANNEL[viaChannel] || 'Otros',\n    chatSubtype: chatSubtype(t.via, tags, viaChannel),\n    aircallCallId: (function(){\n      if (aircallRaw == null) return null;\n      const s = String(aircallRaw).trim();\n      return /^\\d+$/.test(s) ? parseInt(s, 10) : null;\n    })(),\n    _syncedAt: new Date(),\n    _syncSource: 'cs-data-v2-schedule',\n  } });\n}\nreturn out;",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "csdatav2-collect-enrich",
+        "name": "Collect Enrich Chunks",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1000,
+          500
+        ],
+        "parameters": {
+          "jsCode": "const tickets = $input.all().map(i => i.json);\nconst CHUNK = 100;\nconst out = [];\nfor (let i = 0; i < tickets.length; i += CHUNK) {\n  const chunk = tickets.slice(i, i + CHUNK);\n  const ids = chunk.map(t => t.ticketId).filter(id => id != null).join(',');\n  if (ids) out.push({ json: { ids } });\n}\nreturn out;",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "csdatav2-showmany",
+        "name": "Zendesk show_many",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1200,
+          500
+        ],
+        "credentials": {
+          "zendeskApi": {
+            "id": "68yjtB8sha7fDhHj",
+            "name": "Zendesk Prod"
+          }
+        },
+        "parameters": {
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "zendeskApi",
+          "method": "GET",
+          "url": "https://iconstruye.zendesk.com/api/v2/tickets/show_many.json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "ids",
+                "value": "={{ $json.ids }}"
+              },
+              {
+                "name": "include",
+                "value": "slas,metric_sets"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 60000,
+            "retry": {
+              "retry": {
+                "maxRequests": 3,
+                "waitBetweenRequests": 60000
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "csdatav2-enrich-merge",
+        "name": "Enrich Merge",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1400,
+          500
+        ],
+        "parameters": {
+          "jsCode": "const nowIso = new Date().toISOString();\n\n// 1) Acumular metric_sets + policy_metrics de TODOS los chunks que llegaron.\n//    Tolera items con error (onError=continueRegularOutput del HTTP node):\n//    si un chunk falló, su item llega como { error: \"...\", ...} o sin tickets.\n//    Esos chunks se ignoran y los tickets correspondientes se emiten sin enrich.\nconst enrichMap = new Map();\nlet chunksOk = 0, chunksErr = 0;\nfor (const item of $input.all()) {\n  const resp = item.json || {};\n  if (resp.error || (!resp.tickets && !resp.metric_sets)) {\n    chunksErr++;\n    continue;\n  }\n  const tks = resp.tickets || [];\n  const ms  = resp.metric_sets || [];\n  const msById = new Map();\n  for (const m of ms) msById.set(m.ticket_id, m);\n  for (const tk of tks) {\n    const policyMetrics = (tk.slas && tk.slas.policy_metrics) || [];\n    enrichMap.set(tk.id, { metric: msById.get(tk.id) || {}, policyMetrics });\n  }\n  chunksOk++;\n}\nconsole.log(`[enrich-merge] chunks ok=${chunksOk} err=${chunksErr} tickets_enriched=${enrichMap.size}`);\n\nfunction slaBreachedFn(policyMetrics, nowIsoLocal, solvedAtIso) {\n  if (!policyMetrics || policyMetrics.length === 0) return false;\n  if (solvedAtIso) {\n    return policyMetrics.some(p => p.breach_at && p.breach_at < solvedAtIso);\n  }\n  return policyMetrics.some(p => p.stage === 'active' && p.breach_at && p.breach_at < nowIsoLocal);\n}\n\nfunction slaActiveBreachesFn(policyMetrics) {\n  return (policyMetrics || [])\n    .filter(p => (p.stage === 'active' || p.stage === 'paused') && p.breach_at)\n    .map(p => ({ metric: p.metric, stage: p.stage, breachAt: new Date(p.breach_at) }));\n}\n\n// 2) Aplicar enrich a los tickets originales del Slim+Map (referencia cross-node)\nconst originals = $('Slim + Map camelCase').all().map(i => i.json);\nconst out = [];\nfor (const t of originals) {\n  const e = enrichMap.get(t.ticketId);\n  if (e) {\n    const m = e.metric || {};\n    const solvedAtIso = m.solved_at || null;\n    const rtm = m.reply_time_in_minutes;\n    const frtMin = (rtm && rtm.calendar != null) ? rtm.calendar : null;\n    out.push({ json: {\n      ...t,\n      frtMin: frtMin,\n      reopens: m.reopens != null ? m.reopens : null,\n      solvedAt: solvedAtIso ? new Date(solvedAtIso) : t.solvedAt,\n      slaBreached: slaBreachedFn(e.policyMetrics, nowIso, solvedAtIso),\n      slaActiveBreaches: slaActiveBreachesFn(e.policyMetrics),\n    } });\n  } else {\n    // ticket no enriquecido (show_many no devolvió ese ID — raro). Lo emite sin enrich.\n    out.push({ json: t });\n  }\n}\nreturn out;",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "csdatav2-upsert",
+        "name": "Upsert PanelCSTickets",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          1620,
+          500
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "update",
+          "collection": "PanelCSTickets",
+          "updateKey": "ticketId",
+          "fields": "ticketId,subject,status,priority,type,createdAt,updatedAt,createdAtUnix,updatedAtUnix,solvedAt,closedAt,frtMin,reopens,groupId,assigneeId,organizationId,slaBreached,slaActiveBreaches,nivel,seguimiento,merged,csat,lineaNegocio,categoria,producto,subproducto,pasoSn1,escSn2,escMo,devol,viaChannel,canalNormalizado,chatSubtype,aircallCallId,_syncedAt,_syncSource",
+          "options": {
+            "upsert": true
+          }
+        }
+      },
+      {
+        "id": "csdatav2-savecursor",
+        "name": "Save Cursor",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          1840,
+          500
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "update",
+          "collection": "PanelCSMeta",
+          "updateKey": "key",
+          "fields": "key,value,updatedAt,notes",
+          "options": {
+            "upsert": true
+          }
+        }
+      },
+      {
+        "id": "csdatav2-cursorout",
+        "name": "Prepare New Cursor",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1620,
+          700
+        ],
+        "parameters": {
+          "jsCode": "// Toma el batch ya upserted y construye el doc del cursor nuevo.\n// El cursor es el max updatedAtUnix del batch (o now - 60 si batch vacío).\nlet maxUnix = 0;\nfor (const it of $input.all()) {\n  const u = it.json.updatedAtUnix;\n  if (typeof u === 'number' && u > maxUnix) maxUnix = u;\n}\nif (!maxUnix) maxUnix = Math.floor(Date.now() / 1000) - 60;\n// Restar 60s de overlap para no perder tickets que cruzaron el boundary\nconst newCursor = maxUnix - 60;\nreturn [{ json: {\n  key: 'csDataCursor',\n  value: newCursor,\n  updatedAt: new Date(),\n  notes: 'Auto-updated by CS Data v2 schedule (max updatedAtUnix - 60s overlap)',\n} }];",
+          "mode": "runOnceForAllItems"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Parse since",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse since": {
+        "main": [
+          [
+            {
+              "node": "Find Deltas Mongo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cada 5 min": {
+        "main": [
+          [
+            {
+              "node": "Read Cursor",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Cursor": {
+        "main": [
+          [
+            {
+              "node": "Cursor or Fallback",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cursor or Fallback": {
+        "main": [
+          [
+            {
+              "node": "Zendesk Incremental",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Zendesk Incremental": {
+        "main": [
+          [
+            {
+              "node": "Slim + Map camelCase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Slim + Map camelCase": {
+        "main": [
+          [
+            {
+              "node": "Collect Enrich Chunks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Collect Enrich Chunks": {
+        "main": [
+          [
+            {
+              "node": "Zendesk show_many",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Zendesk show_many": {
+        "main": [
+          [
+            {
+              "node": "Enrich Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrich Merge": {
+        "main": [
+          [
+            {
+              "node": "Upsert PanelCSTickets",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert PanelCSTickets": {
+        "main": [
+          [
+            {
+              "node": "Prepare New Cursor",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare New Cursor": {
+        "main": [
+          [
+            {
+              "node": "Save Cursor",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Deltas Mongo": {
+        "main": [
+          [
+            {
+              "node": "Map to snake_case",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Alvaro Cortés",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-29T02:33:34.443Z",
+        "id": 3642,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T02:33:28.424Z",
+        "id": 3640,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T02:32:05.800Z",
+        "id": 3636,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T02:32:04.949Z",
+        "id": 3634,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T02:22:10.361Z",
+        "id": 3625,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T02:22:09.605Z",
+        "id": 3623,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T02:11:28.352Z",
+        "id": 3620,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T02:11:28.333Z",
+        "id": 3619,
+        "workflowId": "eOarJPeIeUPI45de",
+        "versionId": "1fd0a780-0891-46b5-80a7-cbcd02954cc2",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    ]
+  }
+}

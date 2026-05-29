@@ -1,0 +1,9 @@
+#!/bin/sh
+# Regla git-authorship (Alvaro 2026-05-29): commits 100% Alvaro Cortes.
+# Elimina cualquier atribucion a Claude/Anthropic del mensaje de commit,
+# como defensa infalible aunque se agregue por error (o por default del harness).
+# Ver .claude/rules/git-authorship-rules.md
+f="$1"
+sed -i.icbak -E '/[Cc]o-[Aa]uthored-[Bb]y:.*([Cc]laude|[Aa]nthropic)/d; /[Gg]enerated with .{0,4}[Cc]laude [Cc]ode/d; /Generated with \[Claude Code\]/d' "$f"
+rm -f "$f.icbak"
+exit 0

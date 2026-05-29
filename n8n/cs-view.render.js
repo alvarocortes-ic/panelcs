@@ -348,14 +348,20 @@ function _acEnsure(){
   });
 }
 
-/* Sync deltas con cursor desde IDB ya abierta — uso interno de _acEnsure */
-function _acSyncFromCursor(db){
+/* Sync deltas con cursor desde IDB ya abierta — uso interno de _acEnsure.
+ * ITERATIVO: el endpoint /aircall-data pagina por lotes; un solo fetch puede no
+ * alcanzar el presente (deja días recientes sin traer). Sigue pidiendo mientras
+ * el cursor avance, hasta agotar (delta vacío) o el guard. Resuelve el caso de
+ * un cliente con seed viejo que se quedaba varios días atrás. */
+function _acSyncFromCursor(db, _iter, _acc){
+  _iter = _iter || 0; _acc = _acc || 0;
+  if (_iter > 30) return Promise.resolve(_acc);   /* guard anti-loop */
   var cursor = localStorage.getItem(AC_LS_CURSOR) || '0';
+  var prev = parseInt(cursor, 10) || 0;
   return _acFetchDelta(cursor).then(function(j){
     var delta = (j && j.calls) || [];
-    if (!delta.length) return 0;
+    if (!delta.length) return _acc;
     return _acDbPutMany(db, delta).then(function(){
-      /* merge en memoria también */
       if (!window.__CS_CALLS) window.__CS_CALLS = [];
       var idx = {};
       for (var i = 0; i < window.__CS_CALLS.length; i++) idx[window.__CS_CALLS[i].id] = i;
@@ -367,11 +373,12 @@ function _acSyncFromCursor(db){
       var newMax = _acMaxStartedAt(window.__CS_CALLS);
       if (newMax) try { localStorage.setItem(AC_LS_CURSOR, String(newMax)); } catch(e){}
       _acTriggerRepaintIfAircall();
-      return delta.length;
+      if (newMax > prev) return _acSyncFromCursor(db, _iter+1, _acc + delta.length);   /* paginar */
+      return _acc + delta.length;
     });
   }).catch(function(e){
     console.warn('[cs-view aircall sync] fallo:', e);
-    return 0;
+    return _acc;
   });
 }
 
@@ -384,6 +391,24 @@ function _acSync(){
 }
 /* Exponer al loader para el auto-refresh (se re-asigna en cada paint → siempre fresco). */
 window.__csSyncCalls = _acSync;
+
+/* Recarga forzada de calls Aircall: limpia la IDB cs-aircall + cursor y re-baja el
+ * seed completo. Para cuando el seed servidor se regeneró (datos nuevos) y el cliente
+ * tiene una copia vieja en IDB. Lo dispara el botón "Recargar llamadas" de la vista. */
+window.__acForceReload = function(){
+  return _acOpenDB().then(function(db){
+    return new Promise(function(res){
+      var tx = db.transaction(AC_STORE, 'readwrite');
+      tx.objectStore(AC_STORE).clear();
+      tx.oncomplete = function(){ res(); };
+      tx.onerror = function(){ res(); };
+    });
+  }).then(function(){
+    try { localStorage.removeItem(AC_LS_CURSOR); } catch(e){}
+    window.__CS_CALLS = []; window.__CS_CALLS_LOADING = false;
+    _acEnsure();
+  });
+};
 
 /* ---- constantes ---- */
 var ACTIVE = { new:1, open:1, pending:1, hold:1 };
@@ -1065,7 +1090,11 @@ function prioPill(p){
 /* header del panel — lo dibuja el render para que sea actualizable sin reenviar el HTML */
 function buildHeader(){
   var act = T.filter(function (t) { return ACTIVE[t.status]; }).length;
-  var stats = num(T.length) + ' tickets en memoria · ' + num(act) + ' activos';
+  /* En canal Teléfono (Aircall) T está vacío (las llamadas no son tickets) → mostrar
+   * conteo de llamadas en vez de "0 tickets en memoria", que confunde. */
+  var stats = (S.channel === 'ac')
+    ? num((window.__CS_CALLS || []).length) + ' llamadas en memoria'
+    : num(T.length) + ' tickets en memoria · ' + num(act) + ' activos';
   var moon = '<svg class="sun-and-moon" aria-hidden="true" viewBox="0 0 24 24">'
     + '<mask class="moon" id="csmoon"><rect x="0" y="0" width="100%" height="100%" fill="white"/>'
     + '<circle cx="24" cy="10" r="6" fill="black"/></mask>'
@@ -3577,7 +3606,11 @@ function buildAircallView(){
   else if (S.tab === 'week') inner = buildAcWeek();
   else if (S.tab === 'org')  inner = buildAcMesa();
   else inner = buildAcAnalisis();
-  return '<div style="margin-top:14px">' + inner + '</div>';
+  var reload = '<div style="text-align:right;margin-bottom:6px">'
+    + '<button onclick="this.textContent=\'Recargando…\';window.__acForceReload&&window.__acForceReload()" '
+    + 'style="cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--mut);'
+    + 'font-family:inherit;font-size:11.5px;border-radius:7px;padding:5px 11px">🔄 Recargar llamadas</button></div>';
+  return '<div style="margin-top:14px">' + reload + inner + '</div>';
 }
 
 /* ============================ TAB EN VIVO ============================ */

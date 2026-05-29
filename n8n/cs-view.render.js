@@ -3792,7 +3792,7 @@ function drawAcWeekTrend(){
     var st=acStats(acInRange(acUnix(f), acUnix(t)));
     labels.push(fmtDM(f)); recs.push(st.rec); abs.push(st.abandPct||0);
   }
-  mkChart('cAcWeekTrend',{data:{labels:labels,datasets:[
+  mkChart('cAcWeekTrend',{type:'bar',data:{labels:labels,datasets:[
     {type:'bar',label:'Recibidas',data:recs,backgroundColor:acAlpha(AC_RECV,.75),yAxisID:'y',order:2},
     {type:'line',label:'% Abandono',data:abs,borderColor:AC_LOST,backgroundColor:AC_LOST,yAxisID:'y1',tension:.3,pointRadius:3,order:1}
   ]},options:{plugins:{legend:baseLegend()},scales:{

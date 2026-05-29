@@ -14,7 +14,7 @@ Requiere en .env.credentials:
   AIRCALL_API_ID, AIRCALL_API_TOKEN, AIRCALL_API_BASE_URL
 
 Uso:  set -a; source .env.credentials; set +a
-      python outputs/cs-panel/scripts/setup_aircall_data.py
+      python scripts/setup_aircall_data.py
 """
 import json
 import sys
@@ -22,7 +22,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 WF_NAME = "Aircall Data - Deltas del panel CS"
 CRED_NAME = "Aircall Basic - iconstruye"
 CRED_TYPE = "httpBasicAuth"
@@ -30,7 +30,7 @@ CRED_TYPE = "httpBasicAuth"
 
 def load_env() -> dict:
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     if f.exists():
         for line in f.read_text(encoding="utf-8").splitlines():
             line = line.strip()

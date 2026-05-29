@@ -8,7 +8,7 @@ en n8n. Los valores nunca se imprimen; solo se reporta el ID resultante.
 
 Uso (una sola vez):
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/setup_eclipse_credential.py
+    python scripts/setup_eclipse_credential.py
 
 Requiere: N8N_API_URL, N8N_API_KEY, ECLIPSE_AUTH_URL,
           ECLIPSE_CLIENT_ID, ECLIPSE_CLIENT_SECRET.

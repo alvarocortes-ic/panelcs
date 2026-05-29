@@ -28,7 +28,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 
 ZENDESK_CRED_ID = "68yjtB8sha7fDhHj"
 ZENDESK_CRED_NAME = "Zendesk Prod"
@@ -38,7 +38,7 @@ AIRCALL_CRED_NAME = "Aircall Basic - iconstruye"
 
 def load_env():
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:

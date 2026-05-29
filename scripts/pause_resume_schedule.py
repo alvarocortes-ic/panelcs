@@ -8,9 +8,9 @@ Schedule cada 5min, que satura la cuota de incremental export de Zendesk
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/pause_resume_schedule.py status
-    python outputs/cs-panel/scripts/pause_resume_schedule.py pause     # antes de una carga
-    python outputs/cs-panel/scripts/pause_resume_schedule.py resume    # al terminar
+    python scripts/pause_resume_schedule.py status
+    python scripts/pause_resume_schedule.py pause     # antes de una carga
+    python scripts/pause_resume_schedule.py resume    # al terminar
 
 Por defecto opera sobre: "CS Data v2 (Mongo)" y "Aircall Data v2 (Mongo)".
 Pasar nombres explicitos como args adicionales para override.

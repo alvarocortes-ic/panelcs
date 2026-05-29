@@ -3,7 +3,7 @@ list_workflows.py — lista todos los workflows en n8n con estado y carpeta.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/list_workflows.py [filtro_substring]
+    python scripts/list_workflows.py [filtro_substring]
 
 Sin filtro: lista todos.
 Con filtro: solo los que contengan el substring (case-insensitive) en name o tags.
@@ -15,12 +15,12 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 
 
 def load_env():
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:

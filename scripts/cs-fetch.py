@@ -6,12 +6,12 @@ Orquesta:
   - Zendesk: incremental tickets + active enrichment + ticket_events
   - Aircall: incremental calls
 
-Mantiene cursor en outputs/cs-panel/state/cursor.json (versionado en git) para
+Mantiene cursor en state/cursor.json (versionado en git) para
 que otra máquina pueda retomar sin refetchear desde 2026-01-01.
 
 Uso:
   set -a; source .env.credentials; set +a
-  python outputs/cs-panel/scripts/cs-fetch.py [--source zendesk|aircall|all]
+  python scripts/cs-fetch.py [--source zendesk|aircall|all]
                                               [--since 2026-01-01]
                                               [--solved-pass]
                                               [--stats]
@@ -42,8 +42,8 @@ if str(SCRIPTS_DIR) not in sys.path:
 from lib import cursor as cur  # noqa: E402
 from lib import raw_cache as rc  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-RAW_ROOT = REPO_ROOT / "outputs" / "cs-panel" / "data" / "raw"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+RAW_ROOT = REPO_ROOT / "data" / "raw"
 
 
 def _validate_since_and_cursor(since: str, c: dict) -> None:
@@ -66,7 +66,7 @@ def _validate_since_and_cursor(since: str, c: dict) -> None:
     if since_dt < min_dt:
         sys.exit(
             f"ERROR: --since={since} es anterior a min_allowed_since={min_allowed}\n"
-            f"  Si esto es intencional, edita outputs/cs-panel/state/cursor.json\n"
+            f"  Si esto es intencional, edita state/cursor.json\n"
             f"  y bajá meta.min_allowed_since a la fecha deseada.\n"
             f"  Si NO es intencional (default 2026-01-01), revisa el comando."
         )
@@ -79,9 +79,9 @@ def _validate_since_and_cursor(since: str, c: dict) -> None:
             f"es anterior a min_allowed_since={min_allowed}\n"
             f"  Esto sugiere que el cursor fue editado a mano con un epoch incorrecto.\n"
             f"  Limpiá el cursor con:\n"
-            f"    echo '{{\"zendesk\":{{}},\"aircall\":{{}},\"meta\":{{\"schema_version\":1,\"min_allowed_since\":\"{min_allowed}\"}}}}' > outputs/cs-panel/state/cursor.json\n"
+            f"    echo '{{\"zendesk\":{{}},\"aircall\":{{}},\"meta\":{{\"schema_version\":1,\"min_allowed_since\":\"{min_allowed}\"}}}}' > state/cursor.json\n"
             f"  Y limpiá el raw cache con:\n"
-            f"    rm -rf outputs/cs-panel/data/raw/zendesk outputs/cs-panel/data/raw/aircall"
+            f"    rm -rf data/raw/zendesk data/raw/aircall"
         )
 
     ac_unix = c.get("aircall", {}).get("calls_from_unix")

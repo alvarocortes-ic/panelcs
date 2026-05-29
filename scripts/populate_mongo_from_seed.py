@@ -10,7 +10,7 @@ existentes, inserta los nuevos.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/populate_mongo_from_seed.py [--dry-run] [--limit N]
+    python scripts/populate_mongo_from_seed.py [--dry-run] [--limit N]
 
 --dry-run: muestra 3 docs mapeados sin escribir nada.
 --limit N: limita a los primeros N tickets (para test).

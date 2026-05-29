@@ -3,8 +3,8 @@
 deploy_cs_view.py - despliega el render de cs-view a n8n.
 
 Toma los archivos fuente versionados:
-    outputs/cs-panel/n8n/cs-view.styles.css   -> assignment "css"
-    outputs/cs-panel/n8n/cs-view.render.js    -> assignment "js"
+    n8n/cs-view.styles.css   -> assignment "css"
+    n8n/cs-view.render.js    -> assignment "js"
 y los escribe en el nodo "Construir Vista" del workflow CS View.
 
 n8n es el backend que sirve el panel a todos los equipos; este script
@@ -12,8 +12,8 @@ es el paso de "deploy". La fuente de verdad del codigo es el repo.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/deploy_cs_view.py [version]          # PROD
-    python outputs/cs-panel/scripts/deploy_cs_view.py --test [version]   # entorno _test
+    python scripts/deploy_cs_view.py [version]          # PROD
+    python scripts/deploy_cs_view.py --test [version]   # entorno _test
 
 --test: despliega al workflow "CS View - Presentacion del panel _test" y reescribe
 los endpoints a sus variantes -test (excepto cs-dte-health, que el panel llama al
@@ -30,9 +30,9 @@ import urllib.request
 import urllib.error
 
 NODE = "Construir Vista"
-REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-CSS_FILE = os.path.join(REPO, "outputs/cs-panel/n8n/cs-view.styles.css")
-JS_FILE = os.path.join(REPO, "outputs/cs-panel/n8n/cs-view.render.js")
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+CSS_FILE = os.path.join(REPO, "n8n/cs-view.styles.css")
+JS_FILE = os.path.join(REPO, "n8n/cs-view.render.js")
 
 WF_NAME_PROD = "CS View - Presentacion del panel"
 WF_NAME_TEST = "CS View - Presentacion del panel _test"

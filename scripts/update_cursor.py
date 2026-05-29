@@ -9,13 +9,13 @@ Uso:
     set -a; source .env.credentials; set +a
 
     # Setear csDataCursor a now()
-    python outputs/cs-panel/scripts/update_cursor.py csDataCursor now
+    python scripts/update_cursor.py csDataCursor now
 
     # Setear aircallDataCursor a now() menos 60s de overlap
-    python outputs/cs-panel/scripts/update_cursor.py aircallDataCursor now --overlap 60
+    python scripts/update_cursor.py aircallDataCursor now --overlap 60
 
     # Setear a un unix timestamp específico
-    python outputs/cs-panel/scripts/update_cursor.py csDataCursor 1780000000
+    python scripts/update_cursor.py csDataCursor 1780000000
 """
 import argparse
 import os
@@ -30,14 +30,14 @@ try:
 except ImportError:
     sys.exit("ERROR: pymongo no instalado. python -m pip install pymongo")
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 DB_NAME = "automatizaciones"
 META_COLLECTION = "PanelCSMeta"
 
 
 def load_env():
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:

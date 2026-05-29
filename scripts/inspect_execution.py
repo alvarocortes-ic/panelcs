@@ -3,7 +3,7 @@ inspect_execution.py — obtiene el detalle de una execution n8n para diagnostic
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/inspect_execution.py <workflow_name_substring> [N]
+    python scripts/inspect_execution.py <workflow_name_substring> [N]
 
 N: número de executions a inspeccionar (default 2, las más recientes con error).
 """
@@ -14,12 +14,12 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 
 
 def load_env():
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:

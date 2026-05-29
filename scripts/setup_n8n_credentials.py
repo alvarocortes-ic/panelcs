@@ -10,7 +10,7 @@ existente lo conseguís en la UI (URL del credential).
 
 Uso:
   set -a; source .env.credentials; set +a
-  python outputs/cs-panel/scripts/setup_n8n_credentials.py [--only aircall|wotnot]
+  python scripts/setup_n8n_credentials.py [--only aircall|wotnot]
 
 Requiere en .env.credentials: N8N_API_URL, N8N_API_KEY,
   AIRCALL_API_ID, AIRCALL_API_TOKEN, WOTNOT_API_ACCESS_TOKEN
@@ -22,12 +22,12 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 
 
 def load_env() -> dict:
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     if f.exists():
         for line in f.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -73,7 +73,7 @@ def append_env_if_missing(var_name: str, value: str) -> bool:
 
     Devuelve True si lo agregó, False si ya existía.
     """
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     text = f.read_text(encoding="utf-8") if f.exists() else ""
     # match al inicio de línea (con o sin comentario) -> evitar falsos positivos
     for ln in text.splitlines():

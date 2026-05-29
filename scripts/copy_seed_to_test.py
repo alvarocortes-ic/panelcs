@@ -9,7 +9,7 @@ Solo lee de prod (GET) y escribe a test (POST). No modifica nada productivo.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/copy_seed_to_test.py
+    python scripts/copy_seed_to_test.py
 """
 import os
 import ssl

@@ -16,7 +16,7 @@ Estructura:
   "meta": { "schema_version": 1 }
 }
 
-El archivo vive en outputs/cs-panel/state/cursor.json (versionado).
+El archivo vive en state/cursor.json (versionado).
 Tamaño esperado: <2 KB.
 """
 
@@ -30,7 +30,7 @@ SCHEMA_VERSION = 1
 
 
 def cursor_path(base: Path) -> Path:
-    return Path(base) / "outputs" / "cs-panel" / "state" / "cursor.json"
+    return Path(base) / "state" / "cursor.json"
 
 
 def load(repo_root: Path) -> dict:

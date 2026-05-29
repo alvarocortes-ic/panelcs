@@ -4,7 +4,7 @@ setup_cs_export.py — crea o actualiza el workflow "CS Export" en n8n.
 Workflow expuesto en GET /webhook/cs-export?org=X&from=YYYY-MM-DD&to=YYYY-MM-DD
 que devuelve un .jsonl con tickets del cliente + comments fresh desde Zendesk.
 
-Frontend: outputs/cs-panel/n8n/cs-view.render.js funciones
+Frontend: n8n/cs-view.render.js funciones
   buildOrgExportador / expExportar / showToast / expVerDatosModal.
 
 Arquitectura del workflow (3 nodos):
@@ -24,7 +24,7 @@ Requiere en .env.credentials: N8N_API_URL, N8N_API_KEY,
                               ZENDESK_USER, ZENDESK_TOKEN, ZENDESK_BASE_URL
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/setup_cs_export.py [--dry-run]
+    python scripts/setup_cs_export.py [--dry-run]
 
 --dry-run imprime el JSON del workflow sin tocar n8n (útil para revisar).
 """
@@ -35,14 +35,14 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 WF_NAME = "CS Export - Exportador tickets para análisis IA"
 MAX_DAYS = 93  # 3 meses
 
 
 def load_env() -> dict:
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     if f.exists():
         for line in f.read_text(encoding="utf-8").splitlines():
             line = line.strip()

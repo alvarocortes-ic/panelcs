@@ -16,7 +16,7 @@ Pipeline:
 
 Uso:
   set -a; source .env.credentials; set +a
-  python outputs/cs-panel/scripts/cs-build.py [--source zendesk|aircall|all]
+  python scripts/cs-build.py [--source zendesk|aircall|all]
                                               [--desde 2026-01-01]
                                               [--no-publish]
                                               [--out <ruta>]
@@ -25,7 +25,7 @@ Opciones:
   --source      qué fuente buildear (default: all).
   --desde       rango mínimo para el filtro `relevante` (default 2026-01-01).
   --no-publish  no envía a n8n, solo deja el blob local.
-  --out         ruta del seed local (default outputs/cs-panel/data/seed.js).
+  --out         ruta del seed local (default data/seed.js).
 """
 
 from __future__ import annotations
@@ -45,10 +45,10 @@ import carga_inicial as ci  # noqa: E402 — slim_ticket, escalation_fields, sla
 import carga_inicial_aircall as ca  # noqa: E402 — slim_call, publish_seed (su versión)
 from lib import raw_cache as rc  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-RAW_ROOT = REPO_ROOT / "outputs" / "cs-panel" / "data" / "raw"
-DEFAULT_OUT = REPO_ROOT / "outputs" / "cs-panel" / "data" / "seed.js"
-AIRCALL_DEFAULT_OUT = REPO_ROOT / "outputs" / "cs-panel" / "data" / "aircall-seed.js"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+RAW_ROOT = REPO_ROOT / "data" / "raw"
+DEFAULT_OUT = REPO_ROOT / "data" / "seed.js"
+AIRCALL_DEFAULT_OUT = REPO_ROOT / "data" / "aircall-seed.js"
 
 
 def load_latest_tickets() -> dict[int, dict]:

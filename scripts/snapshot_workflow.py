@@ -5,9 +5,9 @@ snapshot_workflow.py — GET de un workflow n8n por nombre y guarda JSON complet
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/snapshot_workflow.py "CS Data v2 (Mongo)"
+    python scripts/snapshot_workflow.py "CS Data v2 (Mongo)"
 
-Salida: outputs/cs-panel/snapshots/{YYYYMMDD-HHMM}-{slug}.json
+Salida: snapshots/{YYYYMMDD-HHMM}-{slug}.json
 """
 import json
 import os
@@ -18,12 +18,12 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 
 
 def load_env():
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -68,7 +68,7 @@ def main():
 
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     slug = slugify(target)
-    out_dir = REPO / "outputs/cs-panel/snapshots"
+    out_dir = REPO / "snapshots"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{ts}-{slug}-{wf_id}.json"
     out_path.write_text(json.dumps(wf, indent=2, ensure_ascii=False), encoding="utf-8")

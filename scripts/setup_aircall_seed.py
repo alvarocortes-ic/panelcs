@@ -12,7 +12,7 @@ Reusa CS_SEED_TOKEN para no proliferar tokens en .env (mismo dueño = panel CS).
 
 Requiere en .env.credentials: N8N_API_URL, N8N_API_KEY, CS_SEED_TOKEN
 Uso:  set -a; source .env.credentials; set +a
-      python outputs/cs-panel/scripts/setup_aircall_seed.py
+      python scripts/setup_aircall_seed.py
 """
 import json
 import sys
@@ -20,13 +20,13 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 WF_NAME = "Aircall Seed - Llamadas del panel CS"
 
 
 def load_env() -> dict:
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     if f.exists():
         for line in f.read_text(encoding="utf-8").splitlines():
             line = line.strip()

@@ -11,7 +11,7 @@ NO resuelve SRV de Atlas. Por eso usamos configurationType=connectionString.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/setup_mongo_n8n_credential.py
+    python scripts/setup_mongo_n8n_credential.py
 """
 import json
 import os
@@ -21,13 +21,13 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 CRED_NAME = "Mongo Atlas devqa - Panel CS"
 
 
 def load_env():
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -52,7 +52,7 @@ def api(env, method, path, body=None):
 
 
 def append_env_if_missing(var_name, value):
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     text = f.read_text(encoding="utf-8") if f.exists() else ""
     for ln in text.splitlines():
         s = ln.strip()

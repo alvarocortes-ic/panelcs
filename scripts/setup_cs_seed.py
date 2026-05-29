@@ -12,7 +12,7 @@ El token se lee de .env.credentials en runtime — nunca se hardcodea en el repo
 
 Requiere en .env.credentials: N8N_API_URL, N8N_API_KEY, CS_SEED_TOKEN
 Uso:  set -a; source .env.credentials; set +a   (o se leen del archivo directo)
-      python outputs/cs-panel/scripts/setup_cs_seed.py
+      python scripts/setup_cs_seed.py
 """
 import json
 import sys
@@ -20,13 +20,13 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 WF_NAME = "CS Seed - Dataset del panel"
 
 
 def load_env() -> dict:
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     if f.exists():
         for line in f.read_text(encoding="utf-8").splitlines():
             line = line.strip()

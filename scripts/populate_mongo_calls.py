@@ -10,7 +10,7 @@ Conversiones clave:
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/populate_mongo_calls.py [--dry-run] [--limit N]
+    python scripts/populate_mongo_calls.py [--dry-run] [--limit N]
 """
 import argparse
 import base64

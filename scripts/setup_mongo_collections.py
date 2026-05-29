@@ -9,11 +9,11 @@ Colecciones creadas:
   - PanelCSCalls   : source of truth de calls Aircall (~18k docs)
   - PanelCSMeta    : metadata sistema (cursors, last_sync, schema_version)
 
-Plan completo en outputs/cs-panel/PLAN-MIGRACION-MONGO.md.
+Plan completo en PLAN-MIGRACION-MONGO.md.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/setup_mongo_collections.py [--dry-run]
+    python scripts/setup_mongo_collections.py [--dry-run]
 
 --dry-run: imprime lo que haría sin tocar Mongo.
 

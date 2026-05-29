@@ -9,7 +9,7 @@ no-null.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/verify_brecha1.py [--minutes 15]
+    python scripts/verify_brecha1.py [--minutes 15]
 
 --minutes N: ventana hacia atrás desde now() (default 15).
 """
@@ -25,14 +25,14 @@ try:
 except ImportError:
     sys.exit("ERROR: pymongo no instalado. python -m pip install pymongo")
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 DB_NAME = "automatizaciones"
 COLLECTION = "PanelCSTickets"
 
 
 def load_env():
     env = {}
-    f = REPO / ".env.credentials"
+    f = REPO.parent.parent / "ICClaude" / ".env.credentials"
     for line in f.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:

@@ -8,13 +8,13 @@ Los jsCode de los 5 Code nodes salen VERBATIM de DESIGN-B-FINAL.json (sintesis d
 panel de diseno). Los params de los nodos no-Code se definen aqui limpios.
 
 Uso:
-    P=outputs/cs-panel/.venv/bin/python
+    P=.venv/bin/python
     export SSL_CERT_FILE=$($P -c 'import certifi;print(certifi.where())')
     set -a; source .env.credentials; set +a
-    $P outputs/cs-panel/scripts/apply_cs_export_b.py            # dry-run TEST: construye + escribe JSON
-    $P outputs/cs-panel/scripts/apply_cs_export_b.py --apply    # PUT al workflow _test (I2BNaChz4jp9ZwY1)
-    $P outputs/cs-panel/scripts/apply_cs_export_b.py --prod          # dry-run PROD (revisar antes)
-    $P outputs/cs-panel/scripts/apply_cs_export_b.py --prod --apply  # PUT al workflow PROD (VDRQnxqBumKPfiyC) — SOLO con GO + snapshot previo
+    $P scripts/apply_cs_export_b.py            # dry-run TEST: construye + escribe JSON
+    $P scripts/apply_cs_export_b.py --apply    # PUT al workflow _test (I2BNaChz4jp9ZwY1)
+    $P scripts/apply_cs_export_b.py --prod          # dry-run PROD (revisar antes)
+    $P scripts/apply_cs_export_b.py --prod --apply  # PUT al workflow PROD (VDRQnxqBumKPfiyC) — SOLO con GO + snapshot previo
 
 Diferencia test/prod: WF_ID, colección Mongo (PanelCSTickets vs _test) y path del webhook (cs-export vs cs-export-test).
 """
@@ -23,13 +23,13 @@ import sys
 import urllib.request
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[1]
 PROD = "--prod" in sys.argv
 WF_ID = "VDRQnxqBumKPfiyC" if PROD else "I2BNaChz4jp9ZwY1"
 COLLECTION = "PanelCSTickets" if PROD else "PanelCSTickets_test"
 WH_PATH = "cs-export" if PROD else "cs-export-test"
-DESIGN = REPO / "outputs/cs-panel/n8n/DESIGN-B-FINAL.json"
-BUILT = REPO / ("outputs/cs-panel/n8n/cs-export-b-built-prod.json" if PROD else "outputs/cs-panel/n8n/cs-export-b-built.json")
+DESIGN = REPO / "n8n/DESIGN-B-FINAL.json"
+BUILT = REPO / ("n8n/cs-export-b-built-prod.json" if PROD else "n8n/cs-export-b-built.json")
 
 MONGO_CRED = {"id": "lkBqIrVu74bzJva2", "name": "Mongo Atlas devqa - Panel CS"}
 ZD_CRED = {"id": "68yjtB8sha7fDhHj", "name": "Zendesk Prod"}
@@ -51,7 +51,7 @@ return [{ json: { ok: true, count: 0, empty: true },
 
 def load_env():
     env = {}
-    for line in (REPO / ".env.credentials").read_text(encoding="utf-8").splitlines():
+    for line in (REPO.parent.parent / "ICClaude" / ".env.credentials").read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

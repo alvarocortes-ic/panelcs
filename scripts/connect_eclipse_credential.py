@@ -7,7 +7,7 @@ Lee CS_ECLIPSE_CREDENTIAL_ID del entorno y la asigna al nodo HTTP
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/connect_eclipse_credential.py
+    python scripts/connect_eclipse_credential.py
 
 Requiere: N8N_API_URL, N8N_API_KEY, CS_ECLIPSE_CREDENTIAL_ID.
 """

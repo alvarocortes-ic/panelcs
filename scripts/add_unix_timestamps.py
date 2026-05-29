@@ -17,7 +17,7 @@ Idempotente: usa $set con bulkWrite.
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/add_unix_timestamps.py [--dry-run]
+    python scripts/add_unix_timestamps.py [--dry-run]
 """
 import os
 import sys

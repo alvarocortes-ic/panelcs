@@ -18,7 +18,7 @@ Slim del Call (29 fields originales → 19 fields útiles para el panel):
 
 Uso:
   set -a; source .env.credentials; set +a
-  python outputs/cs-panel/scripts/carga_inicial_aircall.py [--desde 2026-01-01] [--publish-only] [--dry-run]
+  python scripts/carga_inicial_aircall.py [--desde 2026-01-01] [--publish-only] [--dry-run]
 
 Requiere en .env.credentials:
   AIRCALL_API_ID, AIRCALL_API_TOKEN, AIRCALL_API_BASE_URL
@@ -39,13 +39,13 @@ except ImportError:
     print("requests no instalado. Usa: tools/zendesk-toolkit/.venv/bin/python", file=sys.stderr)
     sys.exit(1)
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_OUT = REPO_ROOT / "outputs" / "cs-panel" / "data" / "aircall-seed.json.gz.b64"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_OUT = REPO_ROOT / "data" / "aircall-seed.json.gz.b64"
 
 
 def load_env() -> dict:
     env: dict[str, str] = {}
-    env_file = REPO_ROOT / ".env.credentials"
+    env_file = REPO_ROOT.parent.parent / "ICClaude" / ".env.credentials"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()

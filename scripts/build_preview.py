@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """build_preview.py — arma un preview local del Panel CS sin n8n.
 
-Ensambla en outputs/cs-panel/preview-panel.html:
+Ensambla en preview-panel.html:
   - Chart.js (CDN)
   - cs-view.styles.css   (embebido)
   - cs-view.render.js    (embebido y ejecutado como en el cascarón)
@@ -10,7 +10,7 @@ Ensambla en outputs/cs-panel/preview-panel.html:
 Sirve para validar visualmente cambios de cs-view ANTES de desplegar a n8n.
 NO reemplaza el deploy: el panel real baja cs-view del workflow.
 
-Uso:  python outputs/cs-panel/scripts/build_preview.py
+Uso:  python scripts/build_preview.py
 """
 import json
 import pathlib
@@ -21,7 +21,7 @@ render = (BASE / "n8n" / "cs-view.render.js").read_text(encoding="utf-8")
 out = BASE / "preview-panel.html"
 
 if not (BASE / "data" / "seed.js").exists():
-    raise SystemExit("falta outputs/cs-panel/data/seed.js — generalo con carga_inicial.py")
+    raise SystemExit("falta data/seed.js — generalo con carga_inicial.py")
 
 html = """<!DOCTYPE html>
 <html lang="es">

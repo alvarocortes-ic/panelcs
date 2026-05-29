@@ -17,7 +17,7 @@ Enriquecimiento (datos reales, no proxy):
 synced_until = momento de la corrida → el cliente lo usa como ?since= para los deltas.
 
 Uso:
-  python outputs/cs-panel/scripts/carga_inicial.py [--desde 2026-01-01] [--salida <ruta>]
+  python scripts/carga_inicial.py [--desde 2026-01-01] [--salida <ruta>]
 
 Requiere en .env.credentials (raíz del repo): ZENDESK_USER, ZENDESK_TOKEN, ZENDESK_BASE_URL
 """
@@ -36,8 +36,8 @@ except ImportError:
     print("requests no instalado. Usa: tools/zendesk-toolkit/.venv/bin/python", file=sys.stderr)
     sys.exit(1)
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_OUT = REPO_ROOT / "outputs" / "cs-panel" / "data" / "seed.js"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_OUT = REPO_ROOT / "data" / "seed.js"
 ACTIVE_STATUSES = {"new", "open", "pending", "hold"}
 
 # custom fields de Zendesk usados por el panel
@@ -92,7 +92,7 @@ def _cf_first(t: dict, fids: list):
 def load_env() -> dict:
     """Carga .env.credentials a un dict (sin imprimir valores)."""
     env: dict[str, str] = {}
-    env_file = REPO_ROOT / ".env.credentials"
+    env_file = REPO_ROOT.parent.parent / "ICClaude" / ".env.credentials"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -547,7 +547,7 @@ def main() -> int:
             "synced_until_iso": now_iso,
             "total_tickets": len(tickets_list),
             "activos": len(active_ids),
-            "fuente": "outputs/cs-panel/scripts/carga_inicial.py",
+            "fuente": "scripts/carga_inicial.py",
         },
         "tickets": tickets_list,
         "groups_by_id": groups_by_id,

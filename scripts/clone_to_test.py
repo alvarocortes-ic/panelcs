@@ -15,8 +15,8 @@ tener Schedule, no corre solo -> se acciona por curl).
 
 Uso:
     set -a; source .env.credentials; set +a
-    python outputs/cs-panel/scripts/clone_to_test.py            # clona todos
-    python outputs/cs-panel/scripts/clone_to_test.py --dry-run  # solo muestra plan
+    python scripts/clone_to_test.py            # clona todos
+    python scripts/clone_to_test.py --dry-run  # solo muestra plan
 """
 import json
 import os

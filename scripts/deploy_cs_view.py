@@ -30,7 +30,9 @@ import urllib.request
 import urllib.error
 
 NODE = "Construir Vista"
-REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+# panelcs/scripts/ -> panelcs (un solo nivel). Antes eran dos ".." y apuntaba a
+# repos_github/ (fuera del repo) tras mover panelcs a repos_github/panelcs.
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CSS_FILE = os.path.join(REPO, "n8n/cs-view.styles.css")
 JS_FILE = os.path.join(REPO, "n8n/cs-view.render.js")
 

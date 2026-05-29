@@ -1,0 +1,97 @@
+  bajando seed desde https://prod-low-code.iconstruye.dev/webhook/cs-seed...
+  seed bajado en 1.2s · 3,412,063b raw · 39,108 tickets
+
+=== Mapeo + upsert a automatizaciones.PanelCSTickets ===
+C:\Users\alvaro.cortes\dev\ICClaude\outputs\cs-panel\scripts\populate_mongo_from_seed.py:111: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "_syncedAt": datetime.utcnow(),
+  batch   1: procesados=   500/39,108 · insertados=0 · modificados=500 · elapsed=0.8s
+  batch   2: procesados= 1,000/39,108 · insertados=0 · modificados=1,000 · elapsed=1.2s
+  batch   3: procesados= 1,500/39,108 · insertados=0 · modificados=1,500 · elapsed=1.5s
+  batch   4: procesados= 2,000/39,108 · insertados=0 · modificados=2,000 · elapsed=1.8s
+  batch   5: procesados= 2,500/39,108 · insertados=0 · modificados=2,500 · elapsed=2.2s
+  batch   6: procesados= 3,000/39,108 · insertados=0 · modificados=3,000 · elapsed=2.6s
+  batch   7: procesados= 3,500/39,108 · insertados=0 · modificados=3,500 · elapsed=2.9s
+  batch   8: procesados= 4,000/39,108 · insertados=0 · modificados=4,000 · elapsed=3.2s
+  batch   9: procesados= 4,500/39,108 · insertados=0 · modificados=4,500 · elapsed=3.6s
+  batch  10: procesados= 5,000/39,108 · insertados=0 · modificados=5,000 · elapsed=4.0s
+  batch  11: procesados= 5,500/39,108 · insertados=0 · modificados=5,500 · elapsed=4.3s
+  batch  12: procesados= 6,000/39,108 · insertados=0 · modificados=6,000 · elapsed=4.7s
+  batch  13: procesados= 6,500/39,108 · insertados=0 · modificados=6,500 · elapsed=5.1s
+  batch  14: procesados= 7,000/39,108 · insertados=0 · modificados=7,000 · elapsed=5.5s
+  batch  15: procesados= 7,500/39,108 · insertados=0 · modificados=7,500 · elapsed=5.8s
+  batch  16: procesados= 8,000/39,108 · insertados=0 · modificados=8,000 · elapsed=6.1s
+  batch  17: procesados= 8,500/39,108 · insertados=0 · modificados=8,500 · elapsed=6.4s
+  batch  18: procesados= 9,000/39,108 · insertados=0 · modificados=9,000 · elapsed=6.7s
+  batch  19: procesados= 9,500/39,108 · insertados=0 · modificados=9,500 · elapsed=7.1s
+  batch  20: procesados=10,000/39,108 · insertados=0 · modificados=10,000 · elapsed=7.7s
+  batch  21: procesados=10,500/39,108 · insertados=0 · modificados=10,500 · elapsed=8.1s
+  batch  22: procesados=11,000/39,108 · insertados=0 · modificados=11,000 · elapsed=8.5s
+  batch  23: procesados=11,500/39,108 · insertados=0 · modificados=11,500 · elapsed=8.8s
+  batch  24: procesados=12,000/39,108 · insertados=0 · modificados=12,000 · elapsed=9.1s
+  batch  25: procesados=12,500/39,108 · insertados=0 · modificados=12,500 · elapsed=9.5s
+  batch  26: procesados=13,000/39,108 · insertados=0 · modificados=13,000 · elapsed=9.8s
+  batch  27: procesados=13,500/39,108 · insertados=0 · modificados=13,500 · elapsed=10.2s
+  batch  28: procesados=14,000/39,108 · insertados=0 · modificados=14,000 · elapsed=10.5s
+  batch  29: procesados=14,500/39,108 · insertados=0 · modificados=14,500 · elapsed=10.8s
+  batch  30: procesados=15,000/39,108 · insertados=0 · modificados=15,000 · elapsed=11.3s
+  batch  31: procesados=15,500/39,108 · insertados=0 · modificados=15,500 · elapsed=11.7s
+  batch  32: procesados=16,000/39,108 · insertados=0 · modificados=16,000 · elapsed=12.2s
+  batch  33: procesados=16,500/39,108 · insertados=0 · modificados=16,500 · elapsed=12.5s
+  batch  34: procesados=17,000/39,108 · insertados=0 · modificados=17,000 · elapsed=12.9s
+  batch  35: procesados=17,500/39,108 · insertados=0 · modificados=17,500 · elapsed=13.2s
+  batch  36: procesados=18,000/39,108 · insertados=0 · modificados=18,000 · elapsed=13.6s
+  batch  37: procesados=18,500/39,108 · insertados=0 · modificados=18,500 · elapsed=14.0s
+  batch  38: procesados=19,000/39,108 · insertados=0 · modificados=19,000 · elapsed=14.3s
+  batch  39: procesados=19,500/39,108 · insertados=0 · modificados=19,500 · elapsed=14.9s
+  batch  40: procesados=20,000/39,108 · insertados=0 · modificados=20,000 · elapsed=15.2s
+  batch  41: procesados=20,500/39,108 · insertados=0 · modificados=20,500 · elapsed=15.6s
+  batch  42: procesados=21,000/39,108 · insertados=0 · modificados=21,000 · elapsed=15.9s
+  batch  43: procesados=21,500/39,108 · insertados=0 · modificados=21,500 · elapsed=16.2s
+  batch  44: procesados=22,000/39,108 · insertados=0 · modificados=22,000 · elapsed=16.6s
+  batch  45: procesados=22,500/39,108 · insertados=0 · modificados=22,500 · elapsed=16.9s
+  batch  46: procesados=23,000/39,108 · insertados=0 · modificados=23,000 · elapsed=17.2s
+  batch  47: procesados=23,500/39,108 · insertados=0 · modificados=23,500 · elapsed=17.7s
+  batch  48: procesados=24,000/39,108 · insertados=0 · modificados=24,000 · elapsed=18.4s
+  batch  49: procesados=24,500/39,108 · insertados=0 · modificados=24,500 · elapsed=18.9s
+  batch  50: procesados=25,000/39,108 · insertados=0 · modificados=25,000 · elapsed=19.3s
+  batch  51: procesados=25,500/39,108 · insertados=0 · modificados=25,500 · elapsed=19.7s
+  batch  52: procesados=26,000/39,108 · insertados=0 · modificados=26,000 · elapsed=20.0s
+  batch  53: procesados=26,500/39,108 · insertados=0 · modificados=26,500 · elapsed=20.3s
+  batch  54: procesados=27,000/39,108 · insertados=0 · modificados=27,000 · elapsed=20.9s
+  batch  55: procesados=27,500/39,108 · insertados=0 · modificados=27,500 · elapsed=21.2s
+  batch  56: procesados=28,000/39,108 · insertados=0 · modificados=28,000 · elapsed=21.7s
+  batch  57: procesados=28,500/39,108 · insertados=0 · modificados=28,500 · elapsed=22.0s
+  batch  58: procesados=29,000/39,108 · insertados=0 · modificados=29,000 · elapsed=22.4s
+  batch  59: procesados=29,500/39,108 · insertados=0 · modificados=29,500 · elapsed=23.0s
+  batch  60: procesados=30,000/39,108 · insertados=0 · modificados=30,000 · elapsed=23.3s
+  batch  61: procesados=30,500/39,108 · insertados=0 · modificados=30,500 · elapsed=23.8s
+  batch  62: procesados=31,000/39,108 · insertados=0 · modificados=31,000 · elapsed=24.3s
+  batch  63: procesados=31,500/39,108 · insertados=0 · modificados=31,500 · elapsed=24.9s
+  batch  64: procesados=32,000/39,108 · insertados=0 · modificados=32,000 · elapsed=25.3s
+  batch  65: procesados=32,500/39,108 · insertados=0 · modificados=32,500 · elapsed=25.9s
+  batch  66: procesados=33,000/39,108 · insertados=0 · modificados=33,000 · elapsed=26.3s
+  batch  67: procesados=33,500/39,108 · insertados=0 · modificados=33,500 · elapsed=26.9s
+  batch  68: procesados=34,000/39,108 · insertados=0 · modificados=34,000 · elapsed=27.4s
+  batch  69: procesados=34,500/39,108 · insertados=0 · modificados=34,500 · elapsed=27.9s
+  batch  70: procesados=35,000/39,108 · insertados=0 · modificados=35,000 · elapsed=28.4s
+  batch  71: procesados=35,500/39,108 · insertados=0 · modificados=35,500 · elapsed=28.8s
+  batch  72: procesados=36,000/39,108 · insertados=0 · modificados=36,000 · elapsed=29.4s
+  batch  73: procesados=36,500/39,108 · insertados=0 · modificados=36,500 · elapsed=30.0s
+  batch  74: procesados=37,000/39,108 · insertados=0 · modificados=37,000 · elapsed=30.4s
+  batch  75: procesados=37,500/39,108 · insertados=138 · modificados=37,362 · elapsed=31.1s
+  batch  76: procesados=38,000/39,108 · insertados=367 · modificados=37,633 · elapsed=31.5s
+  batch  77: procesados=38,500/39,108 · insertados=607 · modificados=37,893 · elapsed=32.1s
+  batch  78: procesados=39,000/39,108 · insertados=922 · modificados=38,078 · elapsed=32.4s
+  batch  79: procesados=39,108/39,108 · insertados=964 · modificados=38,144 · elapsed=32.6s
+
+=== Resumen ===
+  total procesados: 39,108
+  insertados nuevos: 964
+  modificados: 38,144
+  matched (sin cambio): 0
+  elapsed: 32.6s
+C:\Users\alvaro.cortes\dev\ICClaude\outputs\cs-panel\scripts\populate_mongo_from_seed.py:203: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "updatedAt": datetime.utcnow(),
+  PanelCSMeta.lastFullSync actualizado
+
+  conteo final en PanelCSTickets: 39,108 docs

@@ -1,0 +1,59 @@
+Workflow: CS Data v2 (Mongo) (id=eOarJPeIeUPI45de)
+
+=== Execution 323850 ===
+  status: error
+  mode: trigger
+  finished: False
+  startedAt: 2026-05-29T00:45:27.010Z
+  stoppedAt: 2026-05-29T00:45:29.066Z
+  lastNodeExecuted: Zendesk Incremental
+  ERROR:
+    message: The service is receiving too many requests from you
+    node: Zendesk Incremental
+    stack (snippet): NodeApiError: The service is receiving too many requests from you
+    at ExecuteContext.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-nodes-base@file+packages+nodes-base_@aws-sdk+credential-providers@3.808.0_asn1.js@5_8da18263ca0574b0db58d4fefd8173ce/node_modules/n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts:849:16)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at WorkflowExecute.executeNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_ab
+  runData nodes: ['Cada 5 min', 'Read Cursor', 'Cursor or Fallback', 'Zendesk Incremental']
+  -- error en nodo 'Zendesk Incremental':
+     message: The service is receiving too many requests from you
+     description: Number of allowed incremental export API requests per minute exceeded
+
+=== Execution 323845 ===
+  status: error
+  mode: trigger
+  finished: False
+  startedAt: 2026-05-29T00:40:27.008Z
+  stoppedAt: 2026-05-29T00:40:29.182Z
+  lastNodeExecuted: Zendesk Incremental
+  ERROR:
+    message: The service is receiving too many requests from you
+    node: Zendesk Incremental
+    stack (snippet): NodeApiError: The service is receiving too many requests from you
+    at ExecuteContext.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-nodes-base@file+packages+nodes-base_@aws-sdk+credential-providers@3.808.0_asn1.js@5_8da18263ca0574b0db58d4fefd8173ce/node_modules/n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts:849:16)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at WorkflowExecute.executeNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_ab
+  runData nodes: ['Cada 5 min', 'Read Cursor', 'Cursor or Fallback', 'Zendesk Incremental']
+  -- error en nodo 'Zendesk Incremental':
+     message: The service is receiving too many requests from you
+     description: Number of allowed incremental export API requests per minute exceeded
+
+=== Execution 323842 ===
+  status: error
+  mode: trigger
+  finished: False
+  startedAt: 2026-05-29T00:35:27.011Z
+  stoppedAt: 2026-05-29T00:35:28.989Z
+  lastNodeExecuted: Zendesk Incremental
+  ERROR:
+    message: The service is receiving too many requests from you
+    node: Zendesk Incremental
+    stack (snippet): NodeApiError: The service is receiving too many requests from you
+    at ExecuteContext.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-nodes-base@file+packages+nodes-base_@aws-sdk+credential-providers@3.808.0_asn1.js@5_8da18263ca0574b0db58d4fefd8173ce/node_modules/n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts:849:16)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at WorkflowExecute.executeNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_ab
+  runData nodes: ['Cada 5 min', 'Read Cursor', 'Cursor or Fallback', 'Zendesk Incremental']
+  -- error en nodo 'Zendesk Incremental':
+     message: The service is receiving too many requests from you
+     description: Number of allowed incremental export API requests per minute exceeded
+

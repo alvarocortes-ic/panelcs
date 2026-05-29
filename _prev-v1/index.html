@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel CS — iConstruye</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* CSS mínimo del cascarón — el diseño del panel llega desde cs-view (n8n) */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;background:#F1F4F6}
+.cs-app{min-height:100vh}
+.cs-app[data-theme=dark]{background:#0E1A21}
+.csb-top{display:flex;justify-content:space-between;align-items:center;gap:16px;
+  max-width:1280px;margin:0 auto;padding:14px 20px;flex-wrap:wrap}
+.csb-title{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:17px;font-weight:700;
+  color:#00263A;display:flex;align-items:center;gap:9px}
+.cs-app[data-theme=dark] .csb-title{color:#E9EEF0}
+.csb-dot{width:9px;height:9px;border-radius:50%;background:#FF6A00}
+.csb-actions{display:flex;align-items:center;gap:8px}
+.csb-status{font-size:12px;color:#5B6B76;margin-right:4px}
+.cs-app[data-theme=dark] .csb-status{color:#8FA3AE}
+.csb-btn{cursor:pointer;border:1px solid #D9E1E2;background:#FFFFFF;color:#00263A;
+  font-family:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px}
+.cs-app[data-theme=dark] .csb-btn{background:#15252E;color:#E9EEF0;border-color:#283D48}
+.csb-btn:hover{border-color:#FF6A00}
+.csb-btn:disabled{opacity:.5;cursor:default}
+.csb-btn.pri{background:#FF6A00;color:#fff;border-color:#FF6A00}
+.csb-loading{max-width:1280px;margin:0 auto;padding:48px 20px;text-align:center;color:#5B6B76;font-size:14px}
+
+/* ── header sticky + estadísticas + theme switch ─────────────── */
+.csb-header{position:sticky;top:0;z-index:100;background:#F1F4F6;border-bottom:1px solid #E2E8EB}
+.cs-app[data-theme=dark] .csb-header{background:#0E1A21;border-bottom-color:#283D48}
+.csb-brand{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.csb-stats{font-size:12px;color:#5B6B76;font-weight:500;white-space:nowrap;
+  padding-left:14px;border-left:1px solid #D9E1E2}
+.cs-app[data-theme=dark] .csb-stats{color:#8FA3AE;border-left-color:#283D48}
+/* theme switch — adaptado de web.dev/articles/building/a-theme-switch-component */
+.theme-toggle{background:#FFFFFF;border:1px solid #D9E1E2;cursor:pointer;padding:0;
+  inline-size:34px;block-size:34px;border-radius:8px;display:inline-flex;
+  align-items:center;justify-content:center;color:#FF6A00;-webkit-tap-highlight-color:transparent}
+.cs-app[data-theme=dark] .theme-toggle{background:#15252E;border-color:#283D48;color:#FFFFFF}
+.theme-toggle:hover{border-color:#FF6A00}
+.theme-toggle svg{inline-size:22px;block-size:22px}
+.sun-and-moon>:is(.moon,.sun,.sun-beams){transform-origin:center}
+.sun-and-moon>:is(.moon,.sun){fill:currentColor}
+.sun-and-moon>.sun-beams{stroke:currentColor;stroke-width:2px}
+.sun-and-moon>.sun{transition:transform .5s cubic-bezier(.5,1.25,.75,1.25)}
+.sun-and-moon>.sun-beams{transition:transform .5s cubic-bezier(.5,1.5,.75,1.25),opacity .5s ease}
+.sun-and-moon .moon>circle{transition:transform .25s cubic-bezier(0,0,0,1)}
+.cs-app[data-theme=dark] .sun-and-moon>.sun{transform:scale(1.75);
+  transition-timing-function:cubic-bezier(.25,0,.3,1);transition-duration:.25s}
+.cs-app[data-theme=dark] .sun-and-moon>.sun-beams{transform:rotateZ(-25deg);opacity:0;
+  transition-duration:.15s}
+.cs-app[data-theme=dark] .sun-and-moon .moon>circle{transform:translateX(-7px);
+  transition-delay:.25s;transition-duration:.5s}
+@media(prefers-reduced-motion:reduce){.sun-and-moon *{transition:none !important}}
+
+/* ── Pantalla de login OTP ───────────────────────────────────── */
+.cs-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.cs-lcard{width:100%;max-width:380px;background:#fff;border:1px solid #E2E8EB;border-radius:16px;
+  box-shadow:0 8px 30px rgba(0,38,58,.12);padding:32px 30px}
+.cs-lhead{display:flex;align-items:center;gap:9px;font-family:'Plus Jakarta Sans','Inter',sans-serif;
+  font-size:18px;font-weight:700;color:#00263A;margin-bottom:6px}
+.cs-lsub{font-size:13px;color:#5B6B76;margin-bottom:22px}
+.cs-llabel{font-size:12px;font-weight:600;color:#5B6B76;text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:6px;display:block}
+.cs-linput{width:100%;font-family:inherit;font-size:15px;color:#00263A;background:#F8FAFC;
+  border:1px solid #E2E8EB;border-radius:9px;padding:11px 13px;margin-bottom:14px}
+.cs-linput:focus{outline:none;border-color:#FF6A00;background:#fff}
+.cs-linput.code{text-align:center;letter-spacing:8px;font-size:22px;font-weight:700}
+.cs-lbtn{width:100%;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;
+  background:#FF6A00;color:#fff;border:0;border-radius:9px;padding:12px;margin-bottom:10px}
+.cs-lbtn:hover{background:#E85F00}
+.cs-lbtn:disabled{opacity:.55;cursor:default}
+.cs-llink{display:block;text-align:center;font-size:12px;color:#0047BB;cursor:pointer;
+  background:none;border:0;font-family:inherit;width:100%;padding:6px}
+.cs-llink:hover{text-decoration:underline}
+.cs-lmsg{font-size:12.5px;border-radius:8px;padding:9px 11px;margin-bottom:14px}
+.cs-lmsg.err{background:#FBE5E5;color:#BB1A1A}
+.cs-lmsg.ok{background:#E7F7EE;color:#17A24F}
+.cs-lmsg.info{background:#E7EEFB;color:#0047BB}
+.cs-lhide{display:none}
+</style>
+</head>
+<body>
+
+<!-- ── Pantalla de login (visible hasta autenticarse) ── -->
+<div class="cs-login cs-lhide" id="login">
+  <div class="cs-lcard">
+    <div class="cs-lhead"><span class="csb-dot"></span> Panel CS — iConstruye</div>
+    <div class="cs-lsub">Acceso por código de un solo uso enviado a tu correo @iconstruye.</div>
+    <div class="cs-lmsg info cs-lhide" id="lmsg"></div>
+
+    <!-- paso 1: email -->
+    <div id="step-email">
+      <label class="cs-llabel" for="lemail">Correo corporativo</label>
+      <input class="cs-linput" type="email" id="lemail" placeholder="nombre.apellido@iconstruye.com" autocomplete="email">
+      <button class="cs-lbtn" id="btnSendCode">Enviar código</button>
+    </div>
+
+    <!-- paso 2: código -->
+    <div id="step-code" class="cs-lhide">
+      <label class="cs-llabel" for="lcode">Código de 6 dígitos</label>
+      <input class="cs-linput code" type="text" id="lcode" inputmode="numeric" maxlength="6" placeholder="······">
+      <button class="cs-lbtn" id="btnVerify">Ingresar</button>
+      <button class="cs-llink" id="btnBack">← Usar otro correo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Panel (visible tras autenticarse) ── -->
+<div class="cs-app cs-lhide" data-theme="light" id="app">
+  <div class="csb-header">
+   <div class="csb-top">
+    <div class="csb-brand">
+      <div class="csb-title"><span class="csb-dot"></span> Panel CS — iConstruye</div>
+      <span class="csb-stats" id="hdrStats"></span>
+    </div>
+    <div class="csb-actions">
+      <span class="csb-status" id="status">Iniciando…</span>
+      <button class="csb-btn pri" id="btnRefresh">Actualizar</button>
+      <button class="csb-btn" id="btnRecache">Re-cachear</button>
+      <button class="csb-btn" id="btnExport">Exportar</button>
+      <button class="theme-toggle" id="btnTheme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="sun-and-moon" aria-hidden="true" viewBox="0 0 24 24">
+          <mask class="moon" id="csmoon">
+            <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+            <circle cx="24" cy="10" r="6" fill="black"/>
+          </mask>
+          <circle class="sun" cx="12" cy="12" r="6" mask="url(#csmoon)" fill="currentColor"/>
+          <g class="sun-beams" stroke="currentColor">
+            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </g>
+        </svg>
+      </button>
+      <button class="csb-btn" id="btnLogout">Salir</button>
+    </div>
+   </div>
+  </div>
+  <main id="panel-body"><div class="csb-loading">Cargando panel…</div></main>
+</div>
+
+<!-- seed inicial de datos (generado por scripts/carga_inicial.py) -->
+<script src="data/seed.js"></script>
+<script>
+// ── Cliente delgado (cascarón) — Panel CS ───────────────────────────────
+// Mecánica: login OTP, cachear datos en IndexedDB, sincronizar deltas y
+// ejecutar la presentación (CSS + render) que entrega n8n.
+const WH   = 'https://prod-low-code.iconstruye.dev/webhook';
+const AUTH = WH + '/cs-auth';
+const DB_NAME = 'cs-panel', STORE = 'tickets';
+const LS = { cursor:'csp-cursor', lookups:'csp-lookups', view:'csp-view', theme:'csp-theme', session:'csp-session' };
+
+// Gate de login OTP. En false mientras el envío de correo (Eclipse) esté
+// bloqueado — el panel abre directo. Poner en true cuando los workflows
+// CS Auth / CS Email estén operativos para exigir login.
+const REQUIRE_LOGIN = false;
+
+let DB = null, RENDER = null, LOOKUPS = {};
+
+// ── IndexedDB ──
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = e => e.target.result.createObjectStore(STORE, { keyPath:'id' });
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+function dbCount(){
+  return new Promise((res,rej)=>{
+    const r = DB.transaction(STORE,'readonly').objectStore(STORE).count();
+    r.onsuccess = ()=>res(r.result); r.onerror = e=>rej(e.target.error);
+  });
+}
+function dbPutMany(list){
+  return new Promise((res,rej)=>{
+    if(!list || !list.length) return res();
+    const tx = DB.transaction(STORE,'readwrite'), s = tx.objectStore(STORE);
+    for(const t of list) s.put(t);
+    tx.oncomplete = ()=>res(); tx.onerror = e=>rej(e.target.error);
+  });
+}
+// Como dbPutMany pero preserva los campos que el delta no trae. C2b: cs-data solo
+// emite paso_sn1/esc_sn2/esc_mo/devol para tickets que conoce completos (creados tras
+// el deploy); para el resto el delta los omite y se conserva el valor del seed.
+function dbMergeMany(list){
+  return new Promise((res,rej)=>{
+    if(!list || !list.length) return res();
+    const tx = DB.transaction(STORE,'readwrite'), s = tx.objectStore(STORE);
+    for(const t of list){
+      const g = s.get(t.id);
+      g.onsuccess = ()=>{ const prev = g.result; s.put(prev ? Object.assign({}, prev, t) : t); };
+    }
+    tx.oncomplete = ()=>res(); tx.onerror = e=>rej(e.target.error);
+  });
+}
+function dbGetAll(){
+  return new Promise((res,rej)=>{
+    const r = DB.transaction(STORE,'readonly').objectStore(STORE).getAll();
+    r.onsuccess = ()=>res(r.result); r.onerror = e=>rej(e.target.error);
+  });
+}
+function dbClear(){
+  return new Promise((res,rej)=>{
+    const tx = DB.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).clear();
+    tx.oncomplete = ()=>res(); tx.onerror = e=>rej(e.target.error);
+  });
+}
+
+// ── Login OTP ──────────────────────────────────────────────────────────
+function lmsg(txt, kind){
+  const el = document.getElementById('lmsg');
+  if(!txt){ el.classList.add('cs-lhide'); return; }
+  el.textContent = txt;
+  el.className = 'cs-lmsg ' + (kind || 'info');
+}
+async function postAuth(path, payload){
+  const r = await fetch(AUTH + path, {
+    method:'POST', cache:'no-store',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return r.json();
+}
+function showLogin(){
+  document.getElementById('login').classList.remove('cs-lhide');
+  document.getElementById('app').classList.add('cs-lhide');
+}
+async function checkSession(){
+  const token = localStorage.getItem(LS.session);
+  if(!token) return false;
+  try{
+    const j = await postAuth('/session', { token });
+    return !!(j && j.ok);
+  }catch(e){ return false; }       // sin conexión: pedir login
+}
+let LOGIN_EMAIL = '';
+async function doSendCode(){
+  const email = document.getElementById('lemail').value.trim().toLowerCase();
+  if(!/^[^@]+@iconstruye\.com$/.test(email)){
+    lmsg('Ingresa un correo @iconstruye.com válido.', 'err'); return;
+  }
+  const b = document.getElementById('btnSendCode');
+  b.disabled = true; lmsg('Enviando código…', 'info');
+  try{
+    const j = await postAuth('/request', { email });
+    if(j && j.ok){
+      LOGIN_EMAIL = email;
+      document.getElementById('step-email').classList.add('cs-lhide');
+      document.getElementById('step-code').classList.remove('cs-lhide');
+      lmsg(j.message || 'Código enviado. Revisa tu correo.', 'ok');
+      document.getElementById('lcode').focus();
+    }else{
+      lmsg((j && j.error) || 'No se pudo enviar el código.', 'err');
+    }
+  }catch(e){
+    lmsg('Sin conexión con el servidor de acceso.', 'err');
+  }
+  b.disabled = false;
+}
+async function doVerify(){
+  const code = document.getElementById('lcode').value.trim();
+  if(!/^\d{6}$/.test(code)){ lmsg('El código son 6 dígitos.', 'err'); return; }
+  const b = document.getElementById('btnVerify');
+  b.disabled = true; lmsg('Verificando…', 'info');
+  try{
+    const j = await postAuth('/verify', { email: LOGIN_EMAIL, code });
+    if(j && j.ok && j.token){
+      localStorage.setItem(LS.session, j.token);
+      lmsg('', null);
+      await bootPanel();
+    }else{
+      lmsg((j && j.error) || 'Código inválido.', 'err');
+      b.disabled = false;
+    }
+  }catch(e){
+    lmsg('Sin conexión con el servidor de acceso.', 'err');
+    b.disabled = false;
+  }
+}
+function loginBack(){
+  document.getElementById('step-code').classList.add('cs-lhide');
+  document.getElementById('step-email').classList.remove('cs-lhide');
+  document.getElementById('lcode').value = '';
+  lmsg('', null);
+}
+function doLogout(){
+  localStorage.removeItem(LS.session);
+  showLogin();
+  loginBack();
+  document.getElementById('lemail').value = '';
+}
+
+// ── Presentación: baja CSS + render desde cs-view ──
+async function loadView(){
+  try{
+    const r = await fetch(WH + '/cs-view?t=' + Date.now(), { cache:'no-store' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    applyView(j);
+    localStorage.setItem(LS.view, JSON.stringify(j));   // respaldo offline
+  }catch(e){
+    console.warn('[cs-panel] cs-view offline, uso cache:', e.message);
+    const cached = localStorage.getItem(LS.view);
+    if(cached) applyView(JSON.parse(cached));
+    else throw e;
+  }
+}
+function applyView(j){
+  let st = document.getElementById('csview-css');
+  if(!st){ st = document.createElement('style'); st.id = 'csview-css'; document.head.appendChild(st); }
+  st.textContent = j.css || '';
+  RENDER = new Function('data','ctx', j.js || '');
+}
+
+// ── Sincronización incremental: trae el delta y lo mergea ──
+async function sync(){
+  const cursor = localStorage.getItem(LS.cursor) || String(Math.floor(Date.now()/1000) - 3600);
+  const r = await fetch(WH + '/cs-data?since=' + cursor + '&t=' + Date.now(), { cache:'no-store' });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  await dbMergeMany(j.tickets || []);
+  LOOKUPS.groups_by_id = Object.assign(LOOKUPS.groups_by_id||{}, j.groups_by_id||{});
+  LOOKUPS.agents_by_id = Object.assign(LOOKUPS.agents_by_id||{}, j.agents_by_id||{});
+  LOOKUPS.orgs_by_id   = Object.assign(LOOKUPS.orgs_by_id||{},   j.orgs_by_id||{});
+  localStorage.setItem(LS.lookups, JSON.stringify(LOOKUPS));
+  if(j.synced_until_unix) localStorage.setItem(LS.cursor, String(j.synced_until_unix));
+  return (j.tickets || []).length;
+}
+
+// ── Carga inicial: vuelca el seed a IndexedDB la primera vez ──
+async function ensureSeed(){
+  const n = await dbCount();
+  if(n > 0) return false;
+  const seed = window.__CS_SEED;
+  if(!seed){ console.warn('[cs-panel] sin seed local'); return false; }
+  await dbPutMany(seed.tickets || []);
+  LOOKUPS = { groups_by_id:seed.groups_by_id||{}, agents_by_id:seed.agents_by_id||{}, orgs_by_id:seed.orgs_by_id||{} };
+  localStorage.setItem(LS.lookups, JSON.stringify(LOOKUPS));
+  if(seed.meta && seed.meta.synced_until_unix) localStorage.setItem(LS.cursor, String(seed.meta.synced_until_unix));
+  console.log('[cs-panel] seed importado:', (seed.tickets||[]).length, 'tickets');
+  return true;
+}
+
+// ── Header: estadísticas cargadas + alto para el sticky ──
+const ACTIVE_ST = { new:1, open:1, pending:1, hold:1 };
+function updateHeaderStats(tickets){
+  const act = tickets.reduce((a,t)=>a+(ACTIVE_ST[t.status]?1:0),0);
+  const el = document.getElementById('hdrStats');
+  if(el) el.textContent = tickets.length.toLocaleString('es-CL')
+    + ' tickets en memoria · ' + act.toLocaleString('es-CL') + ' activos';
+}
+function syncHeaderHeight(){
+  const h = document.querySelector('.csb-header');
+  if(h) document.getElementById('app').style.setProperty('--hdr-h', h.offsetHeight + 'px');
+}
+
+// ── Pintar el panel ──
+async function paint(){
+  if(!RENDER){ return; }
+  const tickets = await dbGetAll();
+  updateHeaderStats(tickets);
+  const data = {
+    tickets: tickets,
+    groups_by_id: LOOKUPS.groups_by_id || {},
+    agents_by_id: LOOKUPS.agents_by_id || {},
+    orgs_by_id:   LOOKUPS.orgs_by_id   || {},
+    meta: {}
+  };
+  try{
+    RENDER(data, { bodyEl: document.getElementById('panel-body'), Chart: window.Chart });
+  }catch(e){
+    console.error('[cs-panel] error en render:', e);
+    document.getElementById('panel-body').innerHTML =
+      '<div class="csb-loading">Error al renderizar el panel: ' + e.message + '</div>';
+  }
+  syncHeaderHeight();
+}
+
+// ── Indicadores de estado ──
+function setStatus(txt){ document.getElementById('status').textContent = txt; }
+function stamp(){
+  const d = new Date();
+  return d.toLocaleString('es-CL', { timeZone:'America/Santiago', hour:'2-digit', minute:'2-digit' });
+}
+
+// ── Acciones del panel ──
+async function doRefresh(){
+  const b = document.getElementById('btnRefresh'); b.disabled = true;
+  setStatus('Sincronizando…');
+  try{
+    const n = await sync();
+    setStatus('Actualizado ' + stamp() + ' (CLT) · +' + n);
+  }catch(e){
+    setStatus('Sin conexión — datos locales');
+  }
+  await paint();
+  b.disabled = false;
+}
+async function doRecache(){
+  if(!confirm('Re-cachear vuelve a poblar TODA la data local desde cero. '
+    + 'Tomará bastante más que una actualización normal. ¿Continuar?')) return;
+  const b = document.getElementById('btnRecache'); b.disabled = true;
+  setStatus('Re-cacheando… (esto demora)');
+  try{
+    await dbClear();
+    localStorage.removeItem(LS.cursor);
+    await ensureSeed();
+    const n = await sync();
+    setStatus('Re-cacheado ' + stamp() + ' (CLT)');
+  }catch(e){
+    setStatus('Re-cache incompleto — ' + e.message);
+  }
+  await paint();
+  b.disabled = false;
+}
+function toggleTheme(){
+  const app = document.getElementById('app');
+  const t = app.dataset.theme === 'light' ? 'dark' : 'light';
+  app.dataset.theme = t;
+  localStorage.setItem(LS.theme, t);
+  paint();   // re-render para que los charts tomen el tema nuevo
+}
+function doExport(){
+  // el render (cs-view) expone __csExportPDF; si no cargó, print directo
+  if(typeof window.__csExportPDF === 'function') window.__csExportPDF();
+  else window.print();
+}
+
+// ── Arranque del panel (tras autenticarse) ──
+async function bootPanel(){
+  document.getElementById('login').classList.add('cs-lhide');
+  document.getElementById('app').classList.remove('cs-lhide');
+  try{
+    DB = await openDB();
+    const lk = localStorage.getItem(LS.lookups);
+    if(lk) LOOKUPS = JSON.parse(lk);
+    await ensureSeed();
+    await loadView();
+    setStatus('Sincronizando…');
+    try{
+      await sync();
+      setStatus('Actualizado ' + stamp() + ' (CLT)');
+    }catch(e){
+      setStatus('Sin conexión — datos locales');
+    }
+    await paint();
+  }catch(e){
+    console.error('[cs-panel] fallo de arranque:', e);
+    document.getElementById('panel-body').innerHTML =
+      '<div class="csb-loading">No se pudo iniciar el panel: ' + e.message + '</div>';
+    setStatus('Error');
+  }
+}
+
+// ── Arranque ──
+async function init(){
+  document.getElementById('app').dataset.theme = localStorage.getItem(LS.theme) || 'light';
+  document.getElementById('btnRefresh').addEventListener('click', doRefresh);
+  document.getElementById('btnRecache').addEventListener('click', doRecache);
+  document.getElementById('btnExport').addEventListener('click', doExport);
+  document.getElementById('btnTheme').addEventListener('click', toggleTheme);
+  document.getElementById('btnLogout').addEventListener('click', doLogout);
+  window.addEventListener('resize', syncHeaderHeight);
+  document.getElementById('btnSendCode').addEventListener('click', doSendCode);
+  document.getElementById('btnVerify').addEventListener('click', doVerify);
+  document.getElementById('btnBack').addEventListener('click', loginBack);
+  document.getElementById('lemail').addEventListener('keydown', e=>{ if(e.key==='Enter') doSendCode(); });
+  document.getElementById('lcode').addEventListener('keydown', e=>{ if(e.key==='Enter') doVerify(); });
+
+  if(!REQUIRE_LOGIN){
+    document.getElementById('btnLogout').style.display = 'none';   // sin gate, no hay sesión que cerrar
+    bootPanel();
+    return;
+  }
+  if(await checkSession()) bootPanel();
+  else showLogin();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

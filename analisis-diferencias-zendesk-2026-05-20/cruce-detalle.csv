@@ -1,0 +1,301 @@
+id;grupo;grupo_id;status;en_export_zendesk;fuera_sla_panel_logic;any_breach_past;sla_metric;sla_stage;breach_at;cliente;agente
+1752112;Configuraciones;4681689099931;open;Sí;Sí;Sí;agent_work_time;active;2025-09-30T19:12:50Z;Icafal;Rodrigo Ruz
+1790216;Configuraciones;4681689099931;open;No;No;No;;;;;
+1791159;Configuraciones;4681689099931;open;Sí;Sí;Sí;agent_work_time;active;2026-02-26T14:59:09Z;EMIN;Rodrigo Ruz
+1794408;Configuraciones;4681689099931;open;No;No;No;;;;;6740239752219
+1795520;Configuraciones;4681689099931;open;No;No;No;;;;;4531543131803
+1798796;Configuraciones;4681689099931;open;No;No;No;;;;;4531543131803
+1798817;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1799177;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;Sí;agent_work_time;paused;2026-04-17T18:49:02Z;;23929200667547
+1800422;Configuraciones;4681689099931;open;No;No;No;;;;;4531543131803
+1800487;Configuraciones;4681689099931;open;No;No;No;;;;;4623907811227
+1800717;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-03-27T15:39:05Z;ICEWELL;Antonio Meza
+1801271;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-07T15:43:35Z;DERCO;Victor Martínez Silva
+1801457;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1801914;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;Sí;agent_work_time;paused;2026-05-05T12:41:35Z;;45538573651355
+1802741;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1802816;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;Sí;agent_work_time;paused;2026-04-08T21:03:58Z;;23929200667547
+1802967;Customer Success;Customer Success;;Sí;No;No;;;;CEGA LIFTING SPA;Victor Martínez Silva
+1803407;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1803426;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1803484;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;28398400216475
+1803500;Enrolamientos Pendientes;49176446183323;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T12:58:21Z;echeizq;Juan Sanabria
+1803601;Enrolamientos Pendientes;49176446183323;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T21:04:03Z;SENCORP;Carla Villarroel
+1803627;Enrolamientos Pendientes;49176446183323;pending;No;No;No;agent_work_time;paused;;;5180167218459
+1804514;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1804528;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-14T22:18:56Z;EmpresasSocovesa;Victor Martínez Silva
+1804532;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-14T22:27:48Z;AITUESPA;Victor Martínez Silva
+1804551;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1804798;Configuraciones;4681689099931;open;No;No;No;;;;;46592130785563
+1805035;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-15T19:19:26Z;HABITAGE;Victor Martínez Silva
+1805142;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-14T14:50:47Z;CFV;Alcides Pimentel
+1805259;Enrolamientos Pendientes;49176446183323;pending;No;No;Sí;agent_work_time;paused;2026-05-05T14:29:57Z;;23929200667547
+1805264;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-16T14:49:51Z;SOCMC;Victor Martínez Silva
+1805431;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-20T16:13:45Z;BIELCO CONSTRUCTORA S.A;Victor Martínez Silva
+1805563;Configuraciones;4681689099931;new;No;No;No;;;;;
+1805857;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-17T19:05:47Z;SOCOVESA;Alison Peña
+1806034;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-16T16:09:13Z;ECBI;Victor Martínez Silva
+1806247;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-16T22:35:05Z;ISIETE;Antonio Meza
+1806273;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-20T21:30:00Z;QUANT CHILE SPA;Victor Martínez Silva
+1806932;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-20T17:17:41Z;ALM;Alison Peña
+1806975;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-23T12:49:52Z;SOPREMA SPA;Victor Martínez Silva
+1807461;Enrolamientos Pendientes;49176446183323;pending;No;No;No;agent_work_time;paused;;;5180167218459
+1807473;Customer Success;Customer Success;;Sí;No;No;;;;CONPAX;Victor Martínez Silva
+1807686;Enrolamientos Pendientes;49176446183323;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1807985;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-22T14:18:02Z;Segpal;Victor Martínez Silva
+1808058;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-22T16:22:31Z;Segpal;Victor Martínez Silva
+1808080;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-23T14:20:34Z;SIGMADTE;Alison Peña
+1808126;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-22T17:48:40Z;BONUM TERRAE SPA;Victor Martínez Silva
+1808142;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-27T15:16:55Z;Axis;Victor Martínez Silva
+1808200;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-23T16:48:30Z;Vital;Alison Peña
+1808241;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-23T18:07:54Z;sigro;Mariana Lagos
+1808271;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-23T16:32:10Z;AGROMERK SPA.;Victor Martínez Silva
+1808425;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;45538573651355
+1808511;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-24T14:30:36Z;HARCHA;Antonio Meza
+1808723;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-24T15:45:28Z;ASSA ABLOY CHILE LTDA.;Victor Martínez Silva
+1808792;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-24T12:38:54Z;BONUM TERRAE SPA;Victor Martínez Silva
+1808881;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-27T15:14:02Z;CIMENTA;Victor Martínez Silva
+1808930;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-27T15:09:59Z;DIMERCDTE;Alcides Pimentel
+1808953;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-27T18:15:43Z;EmpresasSocovesa;Mariana Lagos
+1809029;Configuraciones;4681689099931;pending;No;No;No;agent_work_time;paused;;;4623907811227
+1809262;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-04T21:05:50Z;FINCAP SOLUCIONES FINANCIERAS SPA;Alvaro Cortés
+1809413;Enrolamientos Pendientes;49176446183323;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1809584;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;23929200667547
+1809615;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-28T22:13:44Z;sigro;Mariana Lagos
+1809617;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-30T19:16:26Z;Dumpex;Victor Martínez Silva
+1809638;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-04-30T20:09:07Z;mpm;Victor Martínez Silva
+1809788;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-29T15:26:09Z;ECBI;Alison Peña
+1809835;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-04T13:13:05Z;INGESAT;Victor Martínez Silva
+1809974;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-29T20:16:47Z;DVC;Alison Peña
+1810025;Configuraciones;4681689099931;pending;No;No;No;agent_work_time;paused;;;4623907811227
+1810026;Configuraciones;4681689099931;pending;No;No;No;agent_work_time;paused;;;4623907811227
+1810070;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-30T23:26:05Z;DLP;Mariana Lagos
+1810115;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-30T13:20:04Z;SIGMADTE;Alison Peña
+1810145;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-04-30T13:57:11Z;HABITA;Alcides Pimentel
+1810463;Enrolamientos Pendientes;49176446183323;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1810628;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-04T13:15:13Z;HABITA;Alcides Pimentel
+1810737;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-04T13:54:57Z;OVAL;Alison Peña
+1811243;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-05T19:39:40Z;ICEWELL;Alcides Pimentel
+1811328;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-05T21:54:49Z;ECOMAC;Alcides Pimentel
+1811335;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-04T21:55:16Z;NuevaMasVida;Victor Martínez Silva
+1811337;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-04T21:56:18Z;emm;Alison Peña
+1811366;Configuraciones;4681689099931;new;No;No;No;;;;;
+1811611;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-05T18:04:26Z;independenciadte;Victor Martínez Silva
+1811724;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-05T19:26:24Z;ICEWELL;Antonio Meza
+1811764;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-07T12:57:15Z;GEOM;Miguel Coronado
+1811820;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T13:22:21Z;FUNDAMENTA;Antonio Meza
+1811860;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-06T13:00:00Z;ASSETINDUSTRIAL;Miguel Coronado
+1811909;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-06T13:47:16Z;Duffco;Mariana Lagos
+1811916;Configuraciones;4681689099931;open;No;No;No;;;;;4623907811227
+1811917;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T18:54:33Z;Alborada;Victor Martínez Silva
+1811972;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-06T15:07:59Z;ECBI;Mariana Lagos
+1811984;Configuraciones;4681689099931;new;No;No;No;;;;;
+1812013;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-06T15:54:59Z;independenciadte;Alison Peña
+1812131;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-06T19:15:24Z;ISIETE;Miguel Coronado
+1812300;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-07T13:34:53Z;RENCORET;Alcides Pimentel
+1812309;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-07T13:52:12Z;ECOMAC;Alcides Pimentel
+1812323;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-06T21:35:34Z;SKAVA EQUIPOS, SUMINISTROS Y SERVIC;Victor Martínez Silva
+1812467;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T18:04:55Z;Duffco;Victor Martínez Silva
+1812536;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;45538573651355
+1812611;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;45538573651355
+1812612;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T14:38:01Z;Icafal;Victor Martínez Silva
+1812614;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-11T14:38:51Z;JUAN ALBERTO CALDERON GUTIERREZ TRA;Alcides Pimentel
+1812617;Configuraciones;4681689099931;new;No;No;No;;;;;
+1812652;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-11T19:39:06Z;COMERCIALIZADORA QUECHUVIL LIMITADA;Victor Martínez Silva
+1812664;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T17:30:00Z;;4623907811227
+1812770;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T15:25:26Z;RENCORET;Antonio Meza
+1812771;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T19:55:46Z;;4623907811227
+1812818;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T17:09:17Z;LAYHERDTE;Antonio Meza
+1812880;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T19:08:04Z;LAYHERDTE;Alvaro Cortés
+1812930;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T20:47:50Z;CIMENTA;Antonio Meza
+1812947;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T18:55:26Z;;47916250416411
+1812991;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-08T23:31:54Z;Icafal;Alcides Pimentel
+1813032;Soporte Nivel 2;4681742537243;pending;Sí;No;Sí;agent_work_time;paused;2026-05-08T21:04:45Z;CARRAN;Mariana Lagos
+1813060;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T22:33:07Z;;4623907811227
+1813155;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-11T16:58:24Z;SOUTHSPA;Antonio Meza
+1813414;Soporte Nivel 1 CICFIN;4681682013083;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T14:15:44Z;ECONORENT;Juan Sanabria
+1813421;Configuraciones;4681689099931;new;No;No;No;;;;;
+1813468;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T14:34:28Z;FERROVIAL;Victor Martínez Silva
+1813497;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T20:01:47Z;ECBI;Alison Peña
+1813521;Configuraciones;4681689099931;new;No;No;No;;;;;
+1813555;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;28398400216475
+1813591;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T16:39:37Z;SIMMARENT;Victor Martínez Silva
+1813626;Soporte Nivel 1 CICFIN;4681682013083;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T17:15:10Z;DIMERCDTE;Juan Sanabria
+1813638;Adm. de plataforma;6295736380827;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T17:31:30Z;SODEXO COLOMBIA;CloudOps
+1813692;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;5180167218459
+1813709;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T19:53:08Z;LOCAMPINO;Antonio Meza
+1813719;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T20:05:00Z;CFV;Antonio Meza
+1813740;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-14T17:44:16Z;hitachi;Victor Martínez Silva
+1813742;Enrolamientos Pendientes;49176446183323;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1813762;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T14:44:18Z;CHEMIESA;Victor Martínez Silva
+1813809;Configuraciones;4681689099931;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T12:47:48Z;ICONSTRUYE;Rodrigo Ruz
+1813891;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T22:08:24Z;GALINEA SPA;Alcides Pimentel
+1813903;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-12T18:36:39Z;EMIN;Antonio Meza
+1813909;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T20:01:26Z;NuevaMasVida;Victor Martínez Silva
+1813913;Soporte Nivel 1 CICFIN;4681682013083;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T15:14:03Z;ECONORENT;Juan Sanabria
+1813934;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T15:31:22Z;CARRAN;Mariana Lagos
+1813968;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1813972;Soporte Nivel 1 CICFIN;4681682013083;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T19:38:46Z;SACYRCONCESIONES;Juan Sanabria
+1814009;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T16:49:53Z;LONDRES;Alison Peña
+1814052;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;Sí;agent_work_time;paused;2026-05-15T18:18:32Z;;28398400216475
+1814058;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T17:54:28Z;Inarco;Mariana Lagos
+1814062;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T18:00:40Z;INSUFERDTE;Antonio Meza
+1814064;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T18:08:32Z;Inarco;Alison Peña
+1814119;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-13T20:09:49Z;WORNER;Miguel Coronado
+1814195;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T13:04:06Z;;4531543131803
+1814265;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T22:25:03Z;cmediterranea;Victor Martínez Silva
+1814277;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T17:40:05Z;;46528922195995
+1814278;Configuraciones;4681689099931;new;No;No;No;;;;;
+1814290;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-14T14:25:53Z;DVC;Alison Peña
+1814369;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-14T15:57:26Z;EYDTE;Miguel Coronado
+1814375;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-14T16:06:21Z;DVC;Alison Peña
+1814436;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-14T17:39:09Z;DVC;Alison Peña
+1814477;Configuraciones;4681689099931;open;No;No;No;;;;;4623907810715
+1814499;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-14T19:56:42Z;INGESAT;Mariana Lagos
+1814520;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T20:39:46Z;RMD;Miguel Coronado
+1814541;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-14T22:19:36Z;PRADOVERDE;Victor Martínez Silva
+1814558;Configuraciones;4681689099931;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T12:32:38Z;CFUNDAMENTA;Sebastian Riaño
+1814567;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T19:31:01Z;CUARZOLISTO;Victor Martínez Silva
+1814580;Configuraciones;4681689099931;pending;No;No;No;agent_work_time;paused;;;4623907811227
+1814638;Soporte Nivel 2;Soporte Nivel 2;;Sí;No;No;;;;Vital;Alcides Pimentel
+1814659;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T14:19:53Z;sigro;Victor Martínez Silva
+1814678;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T23:08:04Z;NTC;Victor Martínez Silva
+1814734;Soporte Nivel 1 CICFIN;4681682013083;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T14:16:30Z;ECONORENT;Juan Sanabria
+1814746;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T19:37:16Z;LONDRES;Miguel Coronado
+1814762;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1814780;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T19:47:14Z;cbiobio;Miguel Coronado
+1814832;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1814846;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T14:06:30Z;RENCORET;Mariana Lagos
+1814885;Soporte Nivel 2;Soporte Nivel 2;;Sí;No;No;;;;VILICIC;Miguel Coronado
+1814956;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-20T22:34:52Z;;4623907811227
+1814965;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T18:17:00Z;EmpresasSocovesa;Alvaro Cortés
+1815038;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T12:33:02Z;SISTEMASGEOTECNICOS;Carlos Castillo Tapia
+1815089;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T14:01:27Z;LDZCONSTRUCTORA;Antonio Meza
+1815099;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T22:44:41Z;CUARZOLISTO;Victor Martínez Silva
+1815143;Soporte Nivel 2;4681742537243;pending;No;No;Sí;agent_work_time;paused;2026-05-18T15:12:07Z;;4623907812251
+1815174;Soporte Nivel 2;Soporte Nivel 2;;Sí;No;No;;;;CONSTRUCTORAH;Miguel Coronado
+1815202;Soporte Nivel 2;Soporte Nivel 2;;Sí;No;No;;;;DVC;Alison Peña
+1815207;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-15T23:58:43Z;ERICA ELIZABETH ULLOA SALAZAR;Victor Martínez Silva
+1815237;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T14:11:00Z;MetalLurasSpA;Victor Martínez Silva
+1815254;Configuraciones;4681689099931;pending;No;No;No;agent_work_time;paused;;;46592130785563
+1815297;Soporte Nivel 2;4681742537243;open;No;Sí;Sí;agent_work_time;active;2026-05-20T16:36:47Z;;21344515565979
+1815312;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T14:27:36Z;;4623907811227
+1815320;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1815326;Customer Success;34826267983899;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T20:28:55Z;99509340-5;Victor Martínez Silva
+1815345;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;23929200667547
+1815352;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T22:43:32Z;Icafal;Miguel Coronado
+1815353;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-18T23:36:44Z;NORTEVERDE;Alison Peña
+1815354;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T13:37:22Z;;4623907811227
+1815387;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T13:00:00Z;ICEWELL;Antonio Meza
+1815407;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T20:59:11Z;;46528922195995
+1815429;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-06-02T18:42:27Z;;6740239752219
+1815441;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-27T16:56:00Z;;4531543131803
+1815446;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1815448;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T20:41:38Z;EmpresasSocovesa;Antonio Meza
+1815453;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1815476;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T14:59:58Z;AITUESPA;Antonio Meza
+1815486;Customer Success;34826267983899;open;No;No;No;;;;;46827432331547
+1815491;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-06-02T19:43:51Z;;4623907811227
+1815518;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-26T17:10:50Z;;4623907811227
+1815568;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T20:11:28Z;;46592130785563
+1815583;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T17:27:31Z;SICOMAQ;Antonio Meza
+1815588;Customer Success;34826267983899;open;No;No;No;agent_work_time;active;2026-05-22T22:40:21Z;;46827432331547
+1815589;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;28398400216475
+1815590;Soporte Nivel 1 CICFIN;4681682013083;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T17:42:10Z;RVC;Juan Sanabria
+1815624;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T19:02:25Z;mpm;Mariana Lagos
+1815627;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T22:54:07Z;ECBI;Alison Peña
+1815630;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T19:22:20Z;GIDDINGSFRUIT;Miguel Coronado
+1815634;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-05-20T21:59:04Z;;45538573651355
+1815641;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T19:28:56Z;syf;Miguel Coronado
+1815643;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-06-09T16:31:25Z;;23929200667547
+1815651;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-06-03T12:39:46Z;;5180167218459
+1815670;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T21:56:23Z;Pocuro;Alison Peña
+1815692;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;5180167218459
+1815703;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T20:54:47Z;DPC;Alison Peña
+1815706;Soporte Nivel 1 CICFIN;4681682013083;open;Sí;Sí;Sí;agent_work_time;active;2026-05-19T20:58:49Z;ECONORENT;Juan Sanabria
+1815708;Customer Success;34826267983899;open;No;No;No;agent_work_time;active;2026-05-25T14:37:24Z;;46827432331547
+1815734;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1815747;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1815750;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-26T12:53:54Z;;4623907811227
+1815751;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T16:25:21Z;;4623907811227
+1815769;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T13:12:29Z;ECBI;Alison Peña
+1815773;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T18:28:00Z;;6740239752219
+1815792;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T14:01:11Z;DVC;Alison Peña
+1815800;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T14:37:13Z;;4623907810715
+1815806;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T14:40:34Z;;46592130785563
+1815828;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T14:47:58Z;78061240-1;Miguel Coronado
+1815834;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T14:56:15Z;TECNASICSA;Miguel Coronado
+1815860;Soporte Nivel 2;4681742537243;open;No;Sí;Sí;agent_work_time;active;2026-05-20T15:33:35Z;;21344515565979
+1815866;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-26T17:08:16Z;;4623907811227
+1815880;Soporte Nivel 2;Soporte Nivel 2;;Sí;No;No;;;;SODEXO;Mariana Lagos
+1815890;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-06-03T20:24:57Z;;5180167218459
+1815893;Soporte Nivel 2;4681742537243;open;Sí;Sí;Sí;agent_work_time;active;2026-05-20T13:28:14Z;ESCOBAR - TORO HNOS. Y CIA. LTDA.;Alvaro Cortés
+1815900;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T13:01:31Z;;6740239752219
+1815902;Soporte Nivel 2;4681742537243;open;No;Sí;Sí;agent_work_time;active;2026-05-20T16:39:12Z;;4623907812251
+1815921;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T13:20:06Z;;6740239752219
+1815928;Soporte Nivel 2;4681742537243;open;No;Sí;Sí;agent_work_time;active;2026-05-20T16:33:33Z;;4623907812251
+1815936;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-26T18:09:47Z;;6740239752219
+1815959;Customer Success;34826267983899;open;No;No;No;agent_work_time;active;2026-05-25T13:57:32Z;;46827432331547
+1815960;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-26T18:29:31Z;;6740239752219
+1815970;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T22:11:51Z;;46592130785563
+1815975;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-05-20T17:22:38Z;;45538573651355
+1815977;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T17:25:15Z;;28486412783899
+1815982;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1816002;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T18:14:47Z;;21344515565979
+1816004;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T23:32:31Z;;48788742910235
+1816006;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1816018;Configuraciones;4681689099931;open;No;No;No;;;;;4623907810715
+1816038;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-26T20:56:02Z;;6740239752219
+1816072;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-20T20:15:33Z;;4623907811227
+1816074;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1816076;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T22:00:24Z;;21344515565979
+1816081;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T21:09:21Z;;4623907810715
+1816088;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1816101;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T20:53:29Z;;46528922195995
+1816107;Configuraciones;4681689099931;new;No;No;No;;;;;
+1816108;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1816109;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1816110;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-26T14:38:15Z;;6740239752219
+1816111;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-20T21:15:26Z;;28486412783899
+1816123;Customer Success;34826267983899;open;No;No;No;agent_work_time;active;2026-05-25T19:10:02Z;;46827432331547
+1816131;Configuraciones;4681689099931;pending;No;No;No;agent_work_time;paused;;;46592130785563
+1816144;Configuraciones;4681689099931;new;No;No;No;;;;;
+1816148;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1816151;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;45538573651355
+1816177;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T19:33:22Z;;4623907810715
+1816187;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-27T13:25:14Z;;6740239752219
+1816188;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-05-20T23:46:01Z;;45538573651355
+1816205;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T21:30:00Z;;4623907810715
+1816207;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T13:00:00Z;;46528922195995
+1816208;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T13:00:32Z;;46528922195995
+1816214;Soporte Nivel 2;4681742537243;pending;No;No;No;agent_work_time;paused;;;4623907812251
+1816215;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T13:25:45Z;;4622789811611
+1816217;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1816223;Customer Success;34826267983899;open;No;No;No;agent_work_time;active;2026-05-25T22:17:12Z;;46827432331547
+1816234;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T14:04:07Z;;28486412783899
+1816239;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-06-02T17:35:20Z;;46528922195995
+1816257;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T14:36:00Z;;4623907811227
+1816258;Configuraciones;4681689099931;new;No;No;No;;;;;
+1816259;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T14:38:02Z;;4623907812251
+1816268;Configuraciones;4681689099931;new;No;No;No;;;;;
+1816279;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T15:02:12Z;;21344515565979
+1816281;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-25T15:36:50Z;;4623907810715
+1816283;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1816285;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T15:25:16Z;;28486412783899
+1816294;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-05-22T15:29:42Z;;4623907811483
+1816297;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T15:35:19Z;;21344515565979
+1816309;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T15:56:17Z;;4623907811227
+1816315;Configuraciones;4681689099931;new;No;No;No;;;;;
+1816331;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T16:27:39Z;;46528922195995
+1816333;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-27T17:58:37Z;;6740239752219
+1816339;Configuraciones;4681689099931;open;No;No;No;agent_work_time;active;2026-05-22T16:40:39Z;;4623907811227
+1816340;Soporte Nivel 1 CICFIN;4681682013083;pending;No;No;No;agent_work_time;paused;;;4623907811483
+1816351;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T17:08:13Z;;28486412783899
+1816352;Configuraciones;4681689099931;new;No;No;No;;;;;
+1816355;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-05-22T17:11:06Z;;5180167218459
+1816358;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T14:44:10Z;;48788742910235
+1816360;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;agent_work_time;active;2026-05-22T17:19:22Z;;4623907811483
+1816362;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;23929200667547
+1816368;Soporte Nivel 2;4681742537243;open;No;No;No;agent_work_time;active;2026-05-22T17:29:28Z;;28486412783899
+1816371;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;4623907811483
+1816377;Soporte Nivel 1 CICFIN;4681682013083;open;No;No;No;;;;;4623907811483

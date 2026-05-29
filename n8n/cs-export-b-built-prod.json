@@ -1,0 +1,500 @@
+{
+  "name": "CS Export - Exportador tickets para análisis IA",
+  "nodes": [
+    {
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        320
+      ],
+      "webhookId": "cs-export",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cs-export",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Validate Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        320
+      ],
+      "parameters": {
+        "jsCode": "// runOnceForAllItems. Webhook GET -> query params bajo $json.query.\nconst src = $input.first().json;\nconst q = src.query || src.body || src;\nconst org = (q.org || '').toString().trim();\nconst from = (q.from || '').toString().trim();\nconst to = (q.to || '').toString().trim();\nconst fail = (error, detail) => [{ json: { ok:false, http_status:400, error, detail: detail||null, org, from, to } }];\n\nif (!org || !from || !to) return fail('missing_params','org, from y to son obligatorios');\nconst RE = /^\\d{4}-\\d{2}-\\d{2}$/;\nif (!RE.test(from) || !RE.test(to)) return fail('bad_date_format','from/to deben ser YYYY-MM-DD');\n\n// createdAtUnix es epoch seconds UTC en Mongo. from = inicio de dia, to = fin de dia inclusivo.\nconst fromMs = Date.parse(from + 'T00:00:00Z');\nconst toMs   = Date.parse(to   + 'T23:59:59Z');\nif (Number.isNaN(fromMs) || Number.isNaN(toMs)) return fail('bad_date_value','fecha invalida');\nif (fromMs > toMs) return fail('range_inverted','from debe ser <= to');\nconst days = (toMs - fromMs) / 86400000;\nif (days > 93) return fail('range_too_wide','el rango no puede exceder 93 dias');\n\nconst fromUnix = Math.floor(fromMs / 1000);\nconst toUnix   = Math.floor(toMs / 1000);\nreturn [{ json: { ok:true, org, from, to, fromUnix, toUnix, startedAt: Date.now(), generated_at: new Date().toISOString() } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "name": "IF Valido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        420,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "valid-ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Mongo Find Tickets",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        200
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "parameters": {
+        "operation": "find",
+        "collection": "PanelCSTickets",
+        "query": "={{ JSON.stringify({ organizationId: $json.org, createdAtUnix: { '$gte': $json.fromUnix, '$lte': $json.toUnix } }) }}",
+        "options": {
+          "limit": 50000,
+          "sort": "={\"createdAtUnix\":1}"
+        }
+      }
+    },
+    {
+      "name": "Build ID Batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// runOnceForAllItems. Entrada = N docs Mongo (1 por item).\nconst docs = $input.all().map(i => i.json).filter(d => d && (d.ticketId != null));\nconst meta = $('Validate Query').first().json; // org/from/to/fromUnix/toUnix/startedAt/generated_at\nconst CHUNK = 100; // show_many cap de Zendesk\n\nif (docs.length === 0) {\n  // 0 tickets: emitir 1 item para que el flujo llegue a Assemble y produzca _meta count:0.\n  return [{ json: { ids:'', batchIndex:0, empty:true } }];\n}\nconst ids = docs.map(d => String(d.ticketId));\nconst batches = [];\nfor (let i = 0; i < ids.length; i += CHUNK) batches.push(ids.slice(i, i + CHUNK));\nreturn batches.map((b, idx) => ({\n  json: { ids: b.join(','), batchIndex: idx, empty:false, ticketCount: ids.length },\n  pairedItem: { item: 0 }\n}));",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "name": "show_many Enrich",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        200
+      ],
+      "credentials": {
+        "zendeskApi": {
+          "id": "68yjtB8sha7fDhHj",
+          "name": "Zendesk Prod"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "parameters": {
+        "method": "GET",
+        "url": "https://iconstruye.zendesk.com/api/v2/tickets/show_many.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ids",
+              "value": "={{ $json.ids }}"
+            },
+            {
+              "name": "include",
+              "value": "users,groups,organizations"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Build Comment Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// runOnceForAllItems. Entrada = M responses show_many (item.json = {tickets:[],users:[],groups:[],organizations:[]}).\nconst MAX_TICKETS = 800; // cap defensivo: ~800 comments secuenciales caben en 300s con margen. 284 (test) pasa holgado.\nconst RUT_FIELD_KEYS = ['rut','RUT','rut_cliente','tax_id','identificador_fiscal','external_id'];\n\nconst usersById = {}, groupsById = {}, orgsById = {}, ticketEnrich = {};\nlet enrichOk = 0, enrichErr = 0;\n\nfor (const it of $input.all()) {\n  const r = it.json || {};\n  // item vacio / error de show_many (onError=continueRegularOutput)\n  if (r.error || (!r.tickets && !r.users && !r.organizations)) { enrichErr++; continue; }\n  enrichOk++;\n  for (const u of (r.users || []))   usersById[String(u.id)]  = { name: u.name || null, role: u.role || null };\n  for (const g of (r.groups || []))  groupsById[String(g.id)] = g.name || null;\n  for (const o of (r.organizations || [])) {\n    let rut = null;\n    const of_ = o.organization_fields || {};\n    for (const k of RUT_FIELD_KEYS) { if (k === 'external_id') { if (o.external_id) { rut = o.external_id; break; } } else if (of_[k]) { rut = of_[k]; break; } }\n    orgsById[String(o.id)] = { name: o.name || null, rut: rut || null };\n  }\n  for (const t of (r.tickets || [])) {\n    ticketEnrich[String(t.id)] = {\n      tags: Array.isArray(t.tags) ? t.tags : [],\n      description: (t.description || '').slice(0, 4000)\n    };\n  }\n}\n\n// Orden canonico de tickets = orden de Mongo (createdAtUnix asc en el find).\nconst mongoDocs = $('Mongo Find Tickets').all().map(i => i.json).filter(d => d && d.ticketId != null);\nlet ids = mongoDocs.map(d => String(d.ticketId));\nlet capped = false;\nif (ids.length > MAX_TICKETS) { ids = ids.slice(0, MAX_TICKETS); capped = true; }\n\n// _maps SOLO en el primer item (Assemble lo lee con .first()). Duplicarlo en N items\n// causaba OOM del sandbox para orgs grandes (~700+ tickets, ej. Sodexo) -> 'Unknown error'.\nconst maps = { usersById, groupsById, orgsById, ticketEnrich, enrichOk, enrichErr, capped, capLimit: MAX_TICKETS };\nif (ids.length === 0) {\n  // 0 tickets en rango: 1 item marca para que Assemble emita _meta count:0 (no llama comments con ticketId valido).\n  return [{ json: { ticketId: null, empty:true, _maps: maps }, pairedItem: { item: 0 } }];\n}\nreturn ids.map((id, idx) => ({ json: idx === 0 ? { ticketId: id, _maps: maps } : { ticketId: id }, pairedItem: { item: idx } }));",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "name": "Comments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1520,
+        200
+      ],
+      "credentials": {
+        "zendeskApi": {
+          "id": "68yjtB8sha7fDhHj",
+          "name": "Zendesk Prod"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "GET",
+        "url": "=https://iconstruye.zendesk.com/api/v2/tickets/{{ $json.ticketId }}/comments.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "include",
+              "value": "users"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 200
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Assemble JSONL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// runOnceForAllItems. Entrada = N responses de comments (item.json = {comments:[],users:[]} de /tickets/{id}/comments.json?include=users).\nconst t0 = $('Validate Query').first().json;\nconst maps = ($('Build Comment Tasks').first().json || {})._maps || {};\nconst usersById = maps.usersById || {}, groupsById = maps.groupsById || {}, orgsById = maps.orgsById || {}, ticketEnrich = maps.ticketEnrich || {};\n\n// Mongo docs por ticketId (fuente de metricas + IDs).\nconst byId = {};\nfor (const i of $('Mongo Find Tickets').all()) { const d = i.json; if (d && d.ticketId != null) byId[String(d.ticketId)] = d; }\n\n// Comments por ticketId. El nodo Comments emite 1 response por item de entrada (Build Comment Tasks),\n// preservando pairedItem -> permite resolver el ticketId exacto. Fallback: indice posicional.\nconst tasks = $('Build Comment Tasks').all();\nconst commentItems = $input.all();\nconst commentsByTicket = {};\nlet commentErrCount = 0;\nfor (let k = 0; k < commentItems.length; k++) {\n  const item = commentItems[k];\n  const resp = item.json || {};\n  let tid = null;\n  const pi = item.pairedItem;\n  let srcIdx = null;\n  if (pi != null) srcIdx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (typeof pi === 'object' ? pi.item : (typeof pi === 'number' ? pi : null));\n  if (srcIdx != null && tasks[srcIdx] && tasks[srcIdx].json) tid = tasks[srcIdx].json.ticketId;\n  if (tid == null && tasks[k] && tasks[k].json) tid = tasks[k].json.ticketId; // fallback posicional\n  if (tid == null && resp.comments && resp.comments[0]) tid = resp.comments[0].ticket_id; // fallback Zendesk\n  if (tid == null) { continue; }\n  if (resp.error || (!resp.comments && !resp.users)) commentErrCount++;\n  // users[] del propio response resuelve autores agentes Y clientes/end-users.\n  const localUsers = {};\n  for (const u of (resp.users || [])) localUsers[String(u.id)] = { name: u.name || null, role: u.role || null };\n  const arr = (resp.comments || []).map(c => {\n    const aid = c.author_id != null ? String(c.author_id) : null;\n    const a = (aid && (localUsers[aid] || usersById[aid])) || {};\n    return { id: c.id, author: { id: c.author_id != null ? c.author_id : null, name: a.name || null, role: a.role || null },\n             created_at: c.created_at || null, body: c.body || '', public: !!c.public };\n  });\n  commentsByTicket[String(tid)] = arr;\n}\n\n// Lineas en el orden de Mongo (1 por ticket; dedup defensivo).\nconst seen = new Set();\nconst orderedIds = $('Mongo Find Tickets').all().map(i => String(i.json.ticketId)).filter(v => { if (seen.has(v)) return false; seen.add(v); return true; });\nconst lines = [];\nconst errors = [];\nif (maps.enrichErr) errors.push('show_many_batches_failed:' + maps.enrichErr);\nif (maps.capped) errors.push('ticket_cap_applied:' + maps.capLimit);\nif (commentErrCount) errors.push('comments_failed_partial:' + commentErrCount);\n\nfor (const id of orderedIds) {\n  const d = byId[id]; if (!d) continue;\n  const enr = ticketEnrich[id] || { tags:[], description:'' };\n  const org = orgsById[String(d.organizationId)] || { name:null, rut:null };\n  const agent = { id: d.assigneeId || null, name: d.assigneeId ? ((usersById[String(d.assigneeId)] || {}).name || null) : null };\n  const group = { id: d.groupId || null, name: d.groupId ? (groupsById[String(d.groupId)] || null) : null };\n  // description: preferir show_many; fallback al body del primer comment publico.\n  let description = enr.description || null;\n  if (!description) { const fc = (commentsByTicket[id] || []).find(c => c.public); description = fc ? String(fc.body || '').slice(0, 4000) : null; }\n  lines.push({\n    id: d.ticketId,\n    subject: d.subject != null ? d.subject : null,\n    status: d.status != null ? d.status : null,\n    priority: d.priority != null ? d.priority : null,\n    type: d.type != null ? d.type : null,\n    created_at: d.createdAt != null ? d.createdAt : null,\n    updated_at: d.updatedAt != null ? d.updatedAt : null,\n    solved_at: d.solvedAt != null ? d.solvedAt : null,\n    frt_min: d.frtMin != null ? d.frtMin : null,\n    reopens: d.reopens != null ? d.reopens : null,\n    sla_breached: d.slaBreached != null ? d.slaBreached : null,\n    csat: d.csat != null ? d.csat : null,\n    agent, group,\n    organization: { id: d.organizationId || null, name: org.name, rut: org.rut },\n    category: d.categoria != null ? d.categoria : null,\n    product: d.producto != null ? d.producto : null,\n    subproduct: d.subproducto != null ? d.subproducto : null,\n    linea_negocio: d.lineaNegocio != null ? d.lineaNegocio : null,\n    via_channel: d.viaChannel != null ? d.viaChannel : null,\n    canal_normalizado: d.canalNormalizado != null ? d.canalNormalizado : null,\n    escalamientos: { paso_sn1: d.pasoSn1 != null ? d.pasoSn1 : null, esc_sn2: d.escSn2 != null ? d.escSn2 : null, esc_mo: d.escMo != null ? d.escMo : null, devol: d.devol != null ? d.devol : null },\n    description,\n    tags: enr.tags,\n    comments: commentsByTicket[id] || []\n  });\n}\n\nconst meta = { _meta: true, org: t0.org, from: t0.from, to: t0.to, count: lines.length,\n  generated_at: new Date().toISOString(), elapsed_ms: Date.now() - (t0.startedAt || Date.now()),\n  errors, schema_version: 2 };\n\nconst ndjson = [JSON.stringify(meta)].concat(lines.map(l => JSON.stringify(l))).join('\\n') + '\\n';\nconst b64 = Buffer.from(ndjson, 'utf8').toString('base64');\nconst fname = `cs-export-${t0.org}-${t0.from}_${t0.to}.jsonl`;\nreturn [{\n  json: { ok:true, count: lines.length, filename: fname, errors: errors.length },\n  binary: { data: { data: b64, mimeType: 'application/x-ndjson', fileName: fname, fileExtension: 'jsonl' } }\n}];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1960,
+        200
+      ],
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "data",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/x-ndjson"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "Error to JSONL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        460
+      ],
+      "parameters": {
+        "jsCode": "// runOnceForAllItems. Rama FALSE del IF (validacion 400). Materializa el error como JSONL binary de 1 linea\n// para no romper el front (que hace r.blob() incondicional, no parsea JSON).\nconst e = $input.first().json || {};\nconst meta = { _meta: true, ok: false, http_status: e.http_status || 400, error: e.error || 'bad_request',\n  detail: e.detail || null, org: e.org || null, from: e.from || null, to: e.to || null,\n  generated_at: new Date().toISOString(), schema_version: 2 };\nconst body = JSON.stringify(meta) + '\\n';\nconst org = e.org || 'NA', from = e.from || 'NA', to = e.to || 'NA';\nconst b64 = Buffer.from(body, 'utf8').toString('base64');\nreturn [{\n  json: { ok:false, error: meta.error },\n  binary: { data: { data: b64, mimeType: 'application/x-ndjson', fileName: `cs-export-${org}-${from}_${to}.jsonl`, fileExtension: 'jsonl' } }\n}];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        860,
+        460
+      ],
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "data",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/x-ndjson"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "IF Has Tickets",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1080,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "is-empty",
+              "leftValue": "={{ $json.empty }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Empty JSONL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        460
+      ],
+      "parameters": {
+        "jsCode": "\nconst t0 = $('Validate Query').first().json;\nconst meta = { _meta: true, org: t0.org, from: t0.from, to: t0.to, count: 0,\n  generated_at: new Date().toISOString(), elapsed_ms: Date.now() - (t0.startedAt || Date.now()),\n  errors: [], schema_version: 2 };\nconst ndjson = JSON.stringify(meta) + '\\n';\nconst b64 = Buffer.from(ndjson, 'utf8').toString('base64');\nconst fname = `cs-export-${t0.org}-${t0.from}_${t0.to}.jsonl`;\nreturn [{ json: { ok: true, count: 0, empty: true },\n  binary: { data: { data: b64, mimeType: 'application/x-ndjson', fileName: fname, fileExtension: 'jsonl' } } }];\n",
+        "mode": "runOnceForAllItems"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Query": {
+      "main": [
+        [
+          {
+            "node": "IF Valido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valido": {
+      "main": [
+        [
+          {
+            "node": "Mongo Find Tickets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error to JSONL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mongo Find Tickets": {
+      "main": [
+        [
+          {
+            "node": "Build ID Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build ID Batches": {
+      "main": [
+        [
+          {
+            "node": "IF Has Tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Tickets": {
+      "main": [
+        [
+          {
+            "node": "Empty JSONL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "show_many Enrich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empty JSONL": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "show_many Enrich": {
+      "main": [
+        [
+          {
+            "node": "Build Comment Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Comment Tasks": {
+      "main": [
+        [
+          {
+            "node": "Comments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comments": {
+      "main": [
+        [
+          {
+            "node": "Assemble JSONL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble JSONL": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error to JSONL": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 300
+  }
+}

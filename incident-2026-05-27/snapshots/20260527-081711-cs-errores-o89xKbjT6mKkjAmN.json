@@ -1,0 +1,1367 @@
+{
+  "updatedAt": "2026-05-18T16:42:36.418Z",
+  "createdAt": "2026-05-15T20:55:37.152Z",
+  "id": "o89xKbjT6mKkjAmN",
+  "name": "CS Errores - Log de ejecuciones fallidas",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "cse-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        208
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "cse-log",
+      "name": "Registrar Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        208
+      ],
+      "parameters": {
+        "jsCode": "// CS Errores — registra una ejecución fallida en staticData (últimas 100).\nconst e = $input.first().json || {};\nconst exec = e.execution || {};\nconst wf = e.workflow || {};\nconst err = exec.error || {};\n\nconst entry = {\n  ts: new Date().toISOString(),\n  workflow_id: wf.id || null,\n  workflow_name: wf.name || null,\n  execution_id: exec.id || null,\n  execution_url: exec.url || null,\n  node: exec.lastNodeExecuted || null,\n  mode: exec.mode || null,\n  error_name: err.name || null,\n  message: err.message || 'sin mensaje'\n};\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.errors)) sd.errors = [];\nsd.errors.unshift(entry);                 // más reciente primero\nif (sd.errors.length > 100) sd.errors.length = 100;\n\nreturn [{ json: entry }];"
+      }
+    },
+    {
+      "id": "cse-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        128,
+        416
+      ],
+      "webhookId": "cs-errors-webhook",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cs-errors",
+        "responseMode": "lastNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "cse-serve",
+      "name": "Servir Errores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        416
+      ],
+      "parameters": {
+        "jsCode": "// CS Errores — sirve el log de errores; ?clear=1 lo purga.\nconst items = $input.all();\nconst q = (items[0] && items[0].json && items[0].json.query) || {};\nconst sd = $getWorkflowStaticData('global');\nif (q.clear === '1' || q.clear === 'true') sd.errors = [];\nconst errors = Array.isArray(sd.errors) ? sd.errors : [];\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  source: 'n8n-webhook-cs-errors',\n  count: errors.length,\n  last_error_ts: errors.length ? errors[0].ts : null,\n  errors: errors\n} }];"
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Registrar Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Servir Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "staticData": {
+    "global": {
+      "errors": [
+        {
+          "ts": "2026-05-27T05:52:14.381Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311055",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311055",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:47:16.028Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311051",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311051",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:42:15.663Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311047",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311047",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:37:16.937Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311043",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311043",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:32:19.529Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311039",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311039",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:27:20.842Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311035",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311035",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:22:14.509Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311031",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311031",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:17:21.398Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311027",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311027",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:12:13.999Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311023",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311023",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:07:20.663Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311019",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311019",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T05:02:21.196Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311015",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311015",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:57:11.985Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311011",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311011",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:52:17.177Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311007",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311007",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:47:17.327Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "311003",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/311003",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:42:16.753Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310999",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310999",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:37:14.887Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310995",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310995",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:32:17.970Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310991",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310991",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:27:13.284Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310987",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310987",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:22:16.816Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310983",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310983",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:17:19.283Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310979",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310979",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:12:14.973Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310974",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310974",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:07:19.154Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310970",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310970",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T04:02:19.986Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310966",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310966",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:57:17.887Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310962",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310962",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:52:15.426Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310958",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310958",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:47:20.859Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310954",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310954",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:42:22.277Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310950",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310950",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:37:17.648Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310946",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310946",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:32:19.075Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310942",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310942",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:27:19.335Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310938",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310938",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:22:15.667Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310934",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310934",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:17:21.234Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310930",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310930",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:12:17.254Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310925",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310925",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:07:16.055Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310920",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310920",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T03:02:18.542Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310916",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310916",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:57:15.744Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310909",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310909",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:52:18.756Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310905",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310905",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:47:21.192Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310901",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310901",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:42:14.061Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310897",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310897",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:37:15.382Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310893",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310893",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:32:20.981Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310888",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310888",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:27:17.600Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310884",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310884",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:22:15.943Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310878",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310878",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:17:23.656Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310874",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310874",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:12:17.355Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310870",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310870",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:07:19.740Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310866",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310866",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T02:02:18.214Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310859",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310859",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:57:21.345Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310853",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310853",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:52:17.662Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310849",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310849",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:47:18.017Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310845",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310845",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:42:17.468Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310841",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310841",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:37:14.459Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310837",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310837",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:32:20.824Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310833",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310833",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:27:17.025Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310829",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310829",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:22:14.556Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310825",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310825",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:17:18.146Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310802",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310802",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:12:17.199Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310780",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310780",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:07:19.223Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310773",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310773",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T01:02:20.380Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310768",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310768",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:57:17.987Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310760",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310760",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:52:18.266Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310756",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310756",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:47:20.919Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310752",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310752",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:42:15.541Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310747",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310747",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:37:16.881Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310739",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310739",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:32:21.690Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310731",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310731",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:27:15.806Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310722",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310722",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:22:18.288Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310705",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310705",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:17:21.567Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310700",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310700",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:12:21.729Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310692",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310692",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:07:16.745Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310685",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310685",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-27T00:02:21.137Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310676",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310676",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:57:14.540Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310666",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310666",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:52:13.741Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310662",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310662",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:47:21.779Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310658",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310658",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:42:17.151Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310653",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310653",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:37:15.085Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310649",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310649",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:32:19.001Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310638",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310638",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:27:25.584Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310616",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310616",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:22:15.727Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310601",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310601",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:17:23.036Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310586",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310586",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:12:17.509Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310574",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310574",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:07:15.902Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310563",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310563",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T23:02:30.084Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310556",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310556",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:57:20.042Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310546",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310546",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:52:20.121Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310533",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310533",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:47:21.386Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310527",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310527",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:42:16.167Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310517",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310517",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:37:13.773Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310511",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310511",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:32:20.184Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310500",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310500",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:27:14.548Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310479",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310479",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:22:13.525Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310465",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310465",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:17:18.153Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310459",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310459",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:12:18.480Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310454",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310454",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:07:19.404Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310432",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310432",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T22:02:23.955Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310424",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310424",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T21:57:16.982Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310411",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310411",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T21:52:17.714Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310406",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310406",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T21:47:20.056Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310392",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310392",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T21:42:17.496Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "310355",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/310355",
+          "node": "Incremental Events",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The returned response was identical 5x, so requests got stopped"
+        },
+        {
+          "ts": "2026-05-26T18:10:37.312Z",
+          "workflow_id": "akkbfUdsiXEg57LK",
+          "workflow_name": "CS Data - Sincronización incremental",
+          "execution_id": "309395",
+          "execution_url": "https://prod-low-code.iconstruye.dev/workflow/akkbfUdsiXEg57LK/executions/309395",
+          "node": "Incremental Tickets",
+          "mode": "trigger",
+          "error_name": "NodeApiError",
+          "message": "The service is receiving too many requests from you"
+        }
+      ]
+    }
+  },
+  "meta": null,
+  "pinData": null,
+  "versionId": "75e07d8c-e457-44ab-9a5d-073f28ca76f4",
+  "activeVersionId": "75e07d8c-e457-44ab-9a5d-073f28ca76f4",
+  "versionCounter": 163,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-15T20:55:37.152Z",
+      "createdAt": "2026-05-15T20:55:37.152Z",
+      "role": "workflow:owner",
+      "workflowId": "o89xKbjT6mKkjAmN",
+      "projectId": "o6NFhAZBieSxzM9V",
+      "project": {
+        "updatedAt": "2026-04-29T14:17:41.635Z",
+        "createdAt": "2026-04-29T14:13:59.888Z",
+        "id": "o6NFhAZBieSxzM9V",
+        "name": "Alvaro Cortés <alvaro.cortes@iconstruye.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-15T21:01:10.559Z",
+    "createdAt": "2026-05-15T21:01:10.559Z",
+    "versionId": "75e07d8c-e457-44ab-9a5d-073f28ca76f4",
+    "workflowId": "o89xKbjT6mKkjAmN",
+    "nodes": [
+      {
+        "id": "cse-trigger",
+        "name": "Error Trigger",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          128,
+          208
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "cse-log",
+        "name": "Registrar Error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          352,
+          208
+        ],
+        "parameters": {
+          "jsCode": "// CS Errores — registra una ejecución fallida en staticData (últimas 100).\nconst e = $input.first().json || {};\nconst exec = e.execution || {};\nconst wf = e.workflow || {};\nconst err = exec.error || {};\n\nconst entry = {\n  ts: new Date().toISOString(),\n  workflow_id: wf.id || null,\n  workflow_name: wf.name || null,\n  execution_id: exec.id || null,\n  execution_url: exec.url || null,\n  node: exec.lastNodeExecuted || null,\n  mode: exec.mode || null,\n  error_name: err.name || null,\n  message: err.message || 'sin mensaje'\n};\n\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.errors)) sd.errors = [];\nsd.errors.unshift(entry);                 // más reciente primero\nif (sd.errors.length > 100) sd.errors.length = 100;\n\nreturn [{ json: entry }];"
+        }
+      },
+      {
+        "id": "cse-webhook",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          128,
+          416
+        ],
+        "webhookId": "cs-errors-webhook",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "cs-errors",
+          "responseMode": "lastNode",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "name": "Access-Control-Allow-Methods",
+                  "value": "GET, OPTIONS"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "cse-serve",
+        "name": "Servir Errores",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          352,
+          416
+        ],
+        "parameters": {
+          "jsCode": "// CS Errores — sirve el log de errores; ?clear=1 lo purga.\nconst items = $input.all();\nconst q = (items[0] && items[0].json && items[0].json.query) || {};\nconst sd = $getWorkflowStaticData('global');\nif (q.clear === '1' || q.clear === 'true') sd.errors = [];\nconst errors = Array.isArray(sd.errors) ? sd.errors : [];\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  source: 'n8n-webhook-cs-errors',\n  count: errors.length,\n  last_error_ts: errors.length ? errors[0].ts : null,\n  errors: errors\n} }];"
+        }
+      }
+    ],
+    "connections": {
+      "Error Trigger": {
+        "main": [
+          [
+            {
+              "node": "Registrar Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Servir Errores",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Alvaro Cortés",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-15T21:01:10.614Z",
+        "id": 2892,
+        "workflowId": "o89xKbjT6mKkjAmN",
+        "versionId": "75e07d8c-e457-44ab-9a5d-073f28ca76f4",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-15T21:01:10.599Z",
+        "id": 2891,
+        "workflowId": "o89xKbjT6mKkjAmN",
+        "versionId": "75e07d8c-e457-44ab-9a5d-073f28ca76f4",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    ]
+  }
+}

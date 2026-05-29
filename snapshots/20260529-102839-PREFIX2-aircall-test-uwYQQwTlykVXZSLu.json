@@ -1,0 +1,806 @@
+{
+  "updatedAt": "2026-05-29T10:51:49.426Z",
+  "createdAt": "2026-05-29T02:33:06.448Z",
+  "id": "uwYQQwTlykVXZSLu",
+  "name": "Aircall Data v2 (Mongo) _test",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "acdatav2-wh",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        200,
+        200
+      ],
+      "webhookId": "aircall-data-test",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "aircall-data-test",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "acdatav2-parse",
+      "name": "Parse since",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// Parsea ?since=<unix seconds> del webhook. Default: now - 1h.\n// Devuelve sinceISO string — el query Mongo lo envuelve en Extended JSON {$date}.\nconst q = $input.first().json.query || {};\nconst sinceRaw = q.since;\nlet since;\nif (sinceRaw && !isNaN(parseInt(sinceRaw, 10))) {\n  since = parseInt(sinceRaw, 10);\n} else {\n  since = Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { since, sinceISO: new Date(since * 1000).toISOString() } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "acdatav2-find",
+      "name": "Find Deltas Mongo",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        200
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "find",
+        "collection": "PanelCSCalls_test",
+        "query": "={{ JSON.stringify({ startedAtUnix: { \"$gte\": $json.since } }) }}",
+        "options": {
+          "limit": 50000,
+          "sort": "={\"startedAtUnix\":1}"
+        }
+      }
+    },
+    {
+      "id": "acdatav2-map",
+      "name": "Map to snake_case",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// Convierte calls Mongo (camelCase) -> snake_case para cliente.\nfunction dtToUnix(d) {\n  if (!d) return null;\n  if (d instanceof Date) return Math.floor(d.getTime() / 1000);\n  if (typeof d === 'string') return Math.floor(new Date(d).getTime() / 1000);\n  return null;\n}\nconst docs = items.map(it => it.json);\nconst calls = docs.map(d => ({\n  id: d.callId,\n  direction: d.direction,\n  status: d.status,\n  started_at: dtToUnix(d.startedAt),\n  answered_at: dtToUnix(d.answeredAt),\n  ended_at: dtToUnix(d.endedAt),\n  duration: d.duration,\n  frt_sec: d.frtSec,\n  missed_reason: d.missedReason,\n  raw_digits: d.rawDigits,\n  user_id: d.userId ? parseInt(d.userId, 10) : null,\n  user_name: d.userName,\n  number_id: d.numberId ? parseInt(d.numberId, 10) : null,\n  number_name: d.numberName,\n  contact_id: d.contactId ? parseInt(d.contactId, 10) : null,\n  contact_name: d.contactName,\n  recording: d.recording,\n  voicemail: d.voicemail,\n  tags: d.tags || [],\n  archived: d.archived,\n}));\nlet maxStarted = 0;\ndocs.forEach(d => {\n  const t = dtToUnix(d.startedAt);\n  if (t && t > maxStarted) maxStarted = t;\n});\nreturn [{ json: {\n  calls,\n  synced_until_unix: maxStarted || Math.floor(Date.now() / 1000),\n  count: calls.length,\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "acdatav2-sched",
+      "name": "Cada 5 min",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        200,
+        500
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aircall-data-v2-mongo-run-test",
+        "responseMode": "lastNode"
+      },
+      "webhookId": "aircall-data-v2-mongo-run-test",
+      "notes": "TEST: reemplaza Schedule Trigger. Disparar con POST /aircall-data-v2-mongo-run-test"
+    },
+    {
+      "id": "acdatav2-readcursor",
+      "name": "Read Cursor",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        500
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "find",
+        "collection": "PanelCSMeta_test",
+        "query": "={{ JSON.stringify({key:'aircallDataCursor'}) }}",
+        "options": {
+          "limit": 1
+        }
+      }
+    },
+    {
+      "id": "acdatav2-fallback",
+      "name": "Cursor or Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        530,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet cursor;\nif (items.length === 0 || !items[0].json || items[0].json.value == null) {\n  cursor = Math.floor(Date.now() / 1000) - 3600;\n} else {\n  cursor = parseInt(items[0].json.value, 10) || Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { value: cursor, startTime: cursor, from: cursor } }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "acdatav2-aircall",
+      "name": "Aircall Calls",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        500
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "621TBwMU0NWdnKNM",
+          "name": "Aircall Basic - iconstruye"
+        }
+      },
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "method": "GET",
+        "url": "https://api.aircall.io/v1/calls",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "per_page",
+              "value": "50"
+            },
+            {
+              "name": "order",
+              "value": "asc"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ $response.body.meta.next_page_link }}",
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body || !$response.body.meta || !$response.body.meta.next_page_link }}",
+              "limitPagesFetched": true,
+              "maxRequests": 5
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "acdatav2-slim",
+      "name": "Slim Calls",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        500
+      ],
+      "parameters": {
+        "jsCode": "// Slim + map calls Aircall (snake_case API) a Mongo camelCase + startedAtUnix.\n// Output: 1 item por call.\nfunction unixToDt(ts) {\n  if (ts == null || ts === 0) return null;\n  return new Date(parseInt(ts, 10) * 1000);\n}\nconst calls = $input.all().flatMap(i => (i.json.calls || []));\nconst out = [];\nfor (const c of calls) {\n  const startedAt = unixToDt(c.started_at);\n  const startedAtUnix = c.started_at ? parseInt(c.started_at, 10) : null;\n  out.push({ json: {\n    callId: parseInt(c.id, 10),\n    direction: c.direction,\n    status: c.status,\n    startedAt,\n    answeredAt: unixToDt(c.answered_at),\n    endedAt: unixToDt(c.ended_at),\n    startedAtUnix,\n    answeredAtUnix: c.answered_at ? parseInt(c.answered_at, 10) : null,\n    duration: c.duration,\n    frtSec: c.frt_sec || null,\n    missedReason: c.missed_reason,\n    rawDigits: c.raw_digits,\n    userId: (c.user && c.user.id != null) ? String(c.user.id) : null,\n    userName: (c.user && c.user.name) || null,\n    numberId: (c.number && c.number.id != null) ? String(c.number.id) : null,\n    numberName: (c.number && c.number.name) || null,\n    contactId: (c.contact && c.contact.id != null) ? String(c.contact.id) : null,\n    contactName: (c.contact && c.contact.name) || null,\n    recording: c.recording || null,\n    voicemail: c.voicemail || null,\n    tags: c.tags || [],\n    archived: !!c.archived,\n    zendeskTicketId: null,\n    _syncedAt: new Date(),\n    _syncSource: 'aircall-data-v2-schedule',\n  } });\n}\nreturn out;",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "acdatav2-upsert",
+      "name": "Upsert PanelCSCalls",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1220,
+        500
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "update",
+        "collection": "PanelCSCalls_test",
+        "updateKey": "callId",
+        "fields": "callId,direction,status,startedAt,answeredAt,endedAt,startedAtUnix,answeredAtUnix,duration,frtSec,missedReason,rawDigits,userId,userName,numberId,numberName,contactId,contactName,recording,voicemail,tags,archived,zendeskTicketId,_syncedAt,_syncSource",
+        "options": {
+          "upsert": true
+        }
+      }
+    },
+    {
+      "id": "acdatav2-newcursor",
+      "name": "Prepare New Cursor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        700
+      ],
+      "parameters": {
+        "jsCode": "let maxUnix = 0;\nfor (const it of $input.all()) {\n  const u = it.json.startedAtUnix;\n  if (typeof u === 'number' && u > maxUnix) maxUnix = u;\n}\nif (!maxUnix) maxUnix = Math.floor(Date.now() / 1000) - 60;\nreturn [{ json: {\n  key: 'aircallDataCursor',\n  value: maxUnix - 60,\n  updatedAt: new Date(),\n  notes: 'Auto-updated by Aircall Data v2 schedule (max startedAtUnix - 60s overlap)',\n} }];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "acdatav2-savecursor",
+      "name": "Save Cursor",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1220,
+        700
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "lkBqIrVu74bzJva2",
+          "name": "Mongo Atlas devqa - Panel CS"
+        }
+      },
+      "parameters": {
+        "operation": "update",
+        "collection": "PanelCSMeta_test",
+        "updateKey": "key",
+        "fields": "key,value,updatedAt,notes",
+        "options": {
+          "upsert": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse since",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse since": {
+      "main": [
+        [
+          {
+            "node": "Find Deltas Mongo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Deltas Mongo": {
+      "main": [
+        [
+          {
+            "node": "Map to snake_case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cada 5 min": {
+      "main": [
+        [
+          {
+            "node": "Read Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cursor": {
+      "main": [
+        [
+          {
+            "node": "Cursor or Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cursor or Fallback": {
+      "main": [
+        [
+          {
+            "node": "Aircall Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aircall Calls": {
+      "main": [
+        [
+          {
+            "node": "Slim Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slim Calls": {
+      "main": [
+        [
+          {
+            "node": "Upsert PanelCSCalls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert PanelCSCalls": {
+      "main": [
+        [
+          {
+            "node": "Prepare New Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare New Cursor": {
+      "main": [
+        [
+          {
+            "node": "Save Cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 240
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "05329d5a-c24c-40e7-86a0-c02e89323875",
+  "activeVersionId": "05329d5a-c24c-40e7-86a0-c02e89323875",
+  "versionCounter": 2,
+  "triggerCount": 2,
+  "shared": [
+    {
+      "updatedAt": "2026-05-29T02:33:06.448Z",
+      "createdAt": "2026-05-29T02:33:06.448Z",
+      "role": "workflow:owner",
+      "workflowId": "uwYQQwTlykVXZSLu",
+      "projectId": "o6NFhAZBieSxzM9V",
+      "project": {
+        "updatedAt": "2026-04-29T14:17:41.635Z",
+        "createdAt": "2026-04-29T14:13:59.888Z",
+        "id": "o6NFhAZBieSxzM9V",
+        "name": "Alvaro Cortés <alvaro.cortes@iconstruye.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-29T10:51:49.427Z",
+    "createdAt": "2026-05-29T10:51:49.427Z",
+    "versionId": "05329d5a-c24c-40e7-86a0-c02e89323875",
+    "workflowId": "uwYQQwTlykVXZSLu",
+    "nodes": [
+      {
+        "id": "acdatav2-wh",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          200,
+          200
+        ],
+        "webhookId": "aircall-data-test",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "aircall-data-test",
+          "responseMode": "lastNode"
+        }
+      },
+      {
+        "id": "acdatav2-parse",
+        "name": "Parse since",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          420,
+          200
+        ],
+        "parameters": {
+          "jsCode": "// Parsea ?since=<unix seconds> del webhook. Default: now - 1h.\n// Devuelve sinceISO string — el query Mongo lo envuelve en Extended JSON {$date}.\nconst q = $input.first().json.query || {};\nconst sinceRaw = q.since;\nlet since;\nif (sinceRaw && !isNaN(parseInt(sinceRaw, 10))) {\n  since = parseInt(sinceRaw, 10);\n} else {\n  since = Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { since, sinceISO: new Date(since * 1000).toISOString() } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "acdatav2-find",
+        "name": "Find Deltas Mongo",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          640,
+          200
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "find",
+          "collection": "PanelCSCalls_test",
+          "query": "={{ JSON.stringify({ startedAtUnix: { \"$gte\": $json.since } }) }}",
+          "options": {
+            "limit": 50000,
+            "sort": "={\"startedAtUnix\":1}"
+          }
+        }
+      },
+      {
+        "id": "acdatav2-map",
+        "name": "Map to snake_case",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          860,
+          200
+        ],
+        "parameters": {
+          "jsCode": "// Convierte calls Mongo (camelCase) -> snake_case para cliente.\nfunction dtToUnix(d) {\n  if (!d) return null;\n  if (d instanceof Date) return Math.floor(d.getTime() / 1000);\n  if (typeof d === 'string') return Math.floor(new Date(d).getTime() / 1000);\n  return null;\n}\nconst docs = items.map(it => it.json);\nconst calls = docs.map(d => ({\n  id: d.callId,\n  direction: d.direction,\n  status: d.status,\n  started_at: dtToUnix(d.startedAt),\n  answered_at: dtToUnix(d.answeredAt),\n  ended_at: dtToUnix(d.endedAt),\n  duration: d.duration,\n  frt_sec: d.frtSec,\n  missed_reason: d.missedReason,\n  raw_digits: d.rawDigits,\n  user_id: d.userId ? parseInt(d.userId, 10) : null,\n  user_name: d.userName,\n  number_id: d.numberId ? parseInt(d.numberId, 10) : null,\n  number_name: d.numberName,\n  contact_id: d.contactId ? parseInt(d.contactId, 10) : null,\n  contact_name: d.contactName,\n  recording: d.recording,\n  voicemail: d.voicemail,\n  tags: d.tags || [],\n  archived: d.archived,\n}));\nlet maxStarted = 0;\ndocs.forEach(d => {\n  const t = dtToUnix(d.startedAt);\n  if (t && t > maxStarted) maxStarted = t;\n});\nreturn [{ json: {\n  calls,\n  synced_until_unix: maxStarted || Math.floor(Date.now() / 1000),\n  count: calls.length,\n} }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "acdatav2-sched",
+        "name": "Cada 5 min",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          200,
+          500
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "aircall-data-v2-mongo-run-test",
+          "responseMode": "lastNode"
+        },
+        "webhookId": "aircall-data-v2-mongo-run-test",
+        "notes": "TEST: reemplaza Schedule Trigger. Disparar con POST /aircall-data-v2-mongo-run-test"
+      },
+      {
+        "id": "acdatav2-readcursor",
+        "name": "Read Cursor",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          420,
+          500
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "find",
+          "collection": "PanelCSMeta_test",
+          "query": "={{ JSON.stringify({key:'aircallDataCursor'}) }}",
+          "options": {
+            "limit": 1
+          }
+        }
+      },
+      {
+        "id": "acdatav2-fallback",
+        "name": "Cursor or Fallback",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          530,
+          500
+        ],
+        "parameters": {
+          "jsCode": "const items = $input.all();\nlet cursor;\nif (items.length === 0 || !items[0].json || items[0].json.value == null) {\n  cursor = Math.floor(Date.now() / 1000) - 3600;\n} else {\n  cursor = parseInt(items[0].json.value, 10) || Math.floor(Date.now() / 1000) - 3600;\n}\nreturn [{ json: { value: cursor, startTime: cursor, from: cursor } }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "acdatav2-aircall",
+        "name": "Aircall Calls",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          780,
+          500
+        ],
+        "credentials": {
+          "httpBasicAuth": {
+            "id": "621TBwMU0NWdnKNM",
+            "name": "Aircall Basic - iconstruye"
+          }
+        },
+        "parameters": {
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "method": "GET",
+          "url": "https://api.aircall.io/v1/calls",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "from",
+                "value": "={{ $json.from }}"
+              },
+              {
+                "name": "per_page",
+                "value": "50"
+              },
+              {
+                "name": "order",
+                "value": "asc"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 60000,
+            "pagination": {
+              "pagination": {
+                "paginationMode": "responseContainsNextURL",
+                "nextURL": "={{ $response.body.meta.next_page_link }}",
+                "paginationCompleteWhen": "other",
+                "completeExpression": "={{ !$response.body || !$response.body.meta || !$response.body.meta.next_page_link }}",
+                "limitPagesFetched": true,
+                "maxRequests": 5
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "acdatav2-slim",
+        "name": "Slim Calls",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1000,
+          500
+        ],
+        "parameters": {
+          "jsCode": "// Slim + map calls Aircall (snake_case API) a Mongo camelCase + startedAtUnix.\n// Output: 1 item por call.\nfunction unixToDt(ts) {\n  if (ts == null || ts === 0) return null;\n  return new Date(parseInt(ts, 10) * 1000);\n}\nconst calls = $input.all().flatMap(i => (i.json.calls || []));\nconst out = [];\nfor (const c of calls) {\n  const startedAt = unixToDt(c.started_at);\n  const startedAtUnix = c.started_at ? parseInt(c.started_at, 10) : null;\n  out.push({ json: {\n    callId: parseInt(c.id, 10),\n    direction: c.direction,\n    status: c.status,\n    startedAt,\n    answeredAt: unixToDt(c.answered_at),\n    endedAt: unixToDt(c.ended_at),\n    startedAtUnix,\n    answeredAtUnix: c.answered_at ? parseInt(c.answered_at, 10) : null,\n    duration: c.duration,\n    frtSec: c.frt_sec || null,\n    missedReason: c.missed_reason,\n    rawDigits: c.raw_digits,\n    userId: (c.user && c.user.id != null) ? String(c.user.id) : null,\n    userName: (c.user && c.user.name) || null,\n    numberId: (c.number && c.number.id != null) ? String(c.number.id) : null,\n    numberName: (c.number && c.number.name) || null,\n    contactId: (c.contact && c.contact.id != null) ? String(c.contact.id) : null,\n    contactName: (c.contact && c.contact.name) || null,\n    recording: c.recording || null,\n    voicemail: c.voicemail || null,\n    tags: c.tags || [],\n    archived: !!c.archived,\n    zendeskTicketId: null,\n    _syncedAt: new Date(),\n    _syncSource: 'aircall-data-v2-schedule',\n  } });\n}\nreturn out;",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "acdatav2-upsert",
+        "name": "Upsert PanelCSCalls",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          1220,
+          500
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "update",
+          "collection": "PanelCSCalls_test",
+          "updateKey": "callId",
+          "fields": "callId,direction,status,startedAt,answeredAt,endedAt,startedAtUnix,answeredAtUnix,duration,frtSec,missedReason,rawDigits,userId,userName,numberId,numberName,contactId,contactName,recording,voicemail,tags,archived,zendeskTicketId,_syncedAt,_syncSource",
+          "options": {
+            "upsert": true
+          }
+        }
+      },
+      {
+        "id": "acdatav2-newcursor",
+        "name": "Prepare New Cursor",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1000,
+          700
+        ],
+        "parameters": {
+          "jsCode": "let maxUnix = 0;\nfor (const it of $input.all()) {\n  const u = it.json.startedAtUnix;\n  if (typeof u === 'number' && u > maxUnix) maxUnix = u;\n}\nif (!maxUnix) maxUnix = Math.floor(Date.now() / 1000) - 60;\nreturn [{ json: {\n  key: 'aircallDataCursor',\n  value: maxUnix - 60,\n  updatedAt: new Date(),\n  notes: 'Auto-updated by Aircall Data v2 schedule (max startedAtUnix - 60s overlap)',\n} }];",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "acdatav2-savecursor",
+        "name": "Save Cursor",
+        "type": "n8n-nodes-base.mongoDb",
+        "typeVersion": 1.2,
+        "position": [
+          1220,
+          700
+        ],
+        "credentials": {
+          "mongoDb": {
+            "id": "lkBqIrVu74bzJva2",
+            "name": "Mongo Atlas devqa - Panel CS"
+          }
+        },
+        "parameters": {
+          "operation": "update",
+          "collection": "PanelCSMeta_test",
+          "updateKey": "key",
+          "fields": "key,value,updatedAt,notes",
+          "options": {
+            "upsert": true
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Parse since",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse since": {
+        "main": [
+          [
+            {
+              "node": "Find Deltas Mongo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Deltas Mongo": {
+        "main": [
+          [
+            {
+              "node": "Map to snake_case",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cada 5 min": {
+        "main": [
+          [
+            {
+              "node": "Read Cursor",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Cursor": {
+        "main": [
+          [
+            {
+              "node": "Cursor or Fallback",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cursor or Fallback": {
+        "main": [
+          [
+            {
+              "node": "Aircall Calls",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aircall Calls": {
+        "main": [
+          [
+            {
+              "node": "Slim Calls",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Slim Calls": {
+        "main": [
+          [
+            {
+              "node": "Upsert PanelCSCalls",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert PanelCSCalls": {
+        "main": [
+          [
+            {
+              "node": "Prepare New Cursor",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare New Cursor": {
+        "main": [
+          [
+            {
+              "node": "Save Cursor",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Alvaro Cortés",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-29T10:51:49.495Z",
+        "id": 3655,
+        "workflowId": "uwYQQwTlykVXZSLu",
+        "versionId": "05329d5a-c24c-40e7-86a0-c02e89323875",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-29T10:51:49.477Z",
+        "id": 3654,
+        "workflowId": "uwYQQwTlykVXZSLu",
+        "versionId": "05329d5a-c24c-40e7-86a0-c02e89323875",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    ]
+  }
+}

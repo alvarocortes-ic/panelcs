@@ -1,0 +1,470 @@
+/* ============================================================
+   cs-view — estilos del Panel CS · iConstruye
+   Fuente versionada. Deploy: assignment "css" del nodo
+   "Construir Vista" (workflow CS View) vía deploy_cs_view.py
+   El tema light/dark lo controla .cs-app[data-theme] del cascarón.
+   ============================================================ */
+.cs-app{
+  --ic-naranjo:#FF6A00; --ic-azul:#0047BB; --ic-fucsia:#EE0F76;
+  --ok:#17A24F; --ok-bg:#E7F7EE; --err:#BB1A1A; --err-bg:#FBE5E5;
+  --alert:#CE8B00; --alert-bg:#FFF7E7; --info:#0047BB; --info-bg:#E7EEFB;
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:14px; line-height:1.5;
+}
+.cs-app[data-theme=light]{
+  --bg:#F1F4F6; --surface:#FFFFFF; --surface2:#F8FAFC; --text:#00263A;
+  --mut:#5B6B76; --border:#E2E8EB; --shadow:0 1px 3px rgba(0,38,58,.09);
+}
+.cs-app[data-theme=dark]{
+  --bg:#0E1A21; --surface:#15252E; --surface2:#1B2F39; --text:#E9EEF0;
+  --mut:#8FA3AE; --border:#283D48; --shadow:0 2px 6px rgba(0,0,0,.45);
+}
+.cs-app{background:var(--bg);color:var(--text);min-height:100vh}
+.cs-wrap{max-width:1280px;margin:0 auto;padding:16px 20px 48px}
+
+/* ---- toolbar superior: selector canal (Fase B) + tabs ---- */
+.cs-toolbar{display:flex;align-items:stretch;gap:14px;border-bottom:1px solid var(--border);
+  margin-bottom:14px}
+.cs-toolbar .cs-tabs{border-bottom:0;margin-bottom:0;flex:1}
+.cs-channel{appearance:none;cursor:pointer;background:var(--surface2);color:var(--text);
+  border:1px solid var(--border);border-radius:7px;
+  font-family:inherit;font-size:13px;font-weight:600;
+  padding:7px 28px 7px 12px;margin-bottom:6px;align-self:center;
+  background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+  min-width:180px}
+.cs-channel:hover{border-color:var(--ic-naranjo)}
+.cs-channel:focus{outline:none;border-color:var(--ic-naranjo);box-shadow:0 0 0 3px rgba(255,106,0,.15)}
+
+/* ---- tabs ---- */
+.cs-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.cs-tab{appearance:none;cursor:pointer;background:transparent;border:0;
+  font-family:inherit;font-size:13px;font-weight:600;color:var(--mut);
+  padding:9px 16px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.cs-tab:hover{color:var(--text)}
+.cs-tab.on{color:var(--ic-naranjo);border-bottom-color:var(--ic-naranjo)}
+
+/* ---- badges de canal (en cards y tablas) ---- */
+.cs-badge{display:inline-block;padding:2px 8px;border-radius:10px;
+  font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  margin-left:8px;vertical-align:middle;line-height:1.4}
+.cs-badge-zd{background:#1e40af;color:#fff}
+.cs-badge-ac{background:#16a34a;color:#fff}
+.cs-badge-wn{background:#a16207;color:#fff}
+.cs-badge-mixed{background:#7c3aed;color:#fff}
+
+/* ---- bloque superior sticky: header + tabs + filtros ---- */
+.cs-topstick{position:sticky;top:0;z-index:40;background:var(--bg);padding-top:12px}
+.cs-topstick .cs-fbar{margin-bottom:0}
+
+/* ---- header del panel (lo dibuja el render) ---- */
+.csh{display:flex;justify-content:space-between;align-items:center;gap:16px;
+  flex-wrap:wrap;padding-bottom:12px}
+.csh-brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.csh-dot{width:9px;height:9px;border-radius:50%;background:var(--ic-naranjo)}
+.csh-title{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:17px;
+  font-weight:700;color:var(--text)}
+.csh-stats{font-size:12px;color:var(--mut);font-weight:500;white-space:nowrap;
+  padding-left:12px;border-left:1px solid var(--border)}
+.csh-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.csh-status{font-size:12px;color:var(--mut);margin-right:4px}
+.csh-btn{cursor:pointer;border:1px solid var(--border);background:var(--surface);
+  color:var(--text);font-family:inherit;font-size:13px;font-weight:600;
+  padding:7px 13px;border-radius:8px}
+.csh-btn:hover{border-color:var(--ic-naranjo)}
+.csh-btn.pri{background:var(--ic-naranjo);color:#fff;border-color:var(--ic-naranjo)}
+.csh-theme{cursor:pointer;border:1px solid var(--border);background:var(--surface);
+  color:var(--ic-naranjo);padding:0;inline-size:34px;block-size:34px;border-radius:8px;
+  display:inline-flex;align-items:center;justify-content:center}
+.cs-app[data-theme=dark] .csh-theme{color:#FFFFFF}
+.csh-theme:hover{border-color:var(--ic-naranjo)}
+.csh-theme svg{inline-size:22px;block-size:22px}
+/* theme switch — adaptado de web.dev/articles/building/a-theme-switch-component */
+.sun-and-moon>:is(.moon,.sun,.sun-beams){transform-origin:center}
+.sun-and-moon>:is(.moon,.sun){fill:currentColor}
+.sun-and-moon>.sun-beams{stroke:currentColor;stroke-width:2px}
+.sun-and-moon>.sun{transition:transform .5s cubic-bezier(.5,1.25,.75,1.25)}
+.sun-and-moon>.sun-beams{transition:transform .5s cubic-bezier(.5,1.5,.75,1.25),opacity .5s ease}
+.sun-and-moon .moon>circle{transition:transform .25s cubic-bezier(0,0,0,1)}
+.cs-app[data-theme=dark] .sun-and-moon>.sun{transform:scale(1.75);
+  transition-timing-function:cubic-bezier(.25,0,.3,1);transition-duration:.25s}
+.cs-app[data-theme=dark] .sun-and-moon>.sun-beams{transform:rotateZ(-25deg);opacity:0;
+  transition-duration:.15s}
+.cs-app[data-theme=dark] .sun-and-moon .moon>circle{transform:translateX(-7px);
+  transition-delay:.25s;transition-duration:.5s}
+@media(prefers-reduced-motion:reduce){.sun-and-moon *{transition:none!important}}
+
+/* ---- navegación por semana (tab Análisis semanal) ---- */
+.cs-weeknav{display:flex;align-items:center;gap:6px}
+.cs-wbtn{appearance:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;
+  line-height:1;color:var(--text);background:var(--surface2);border:1px solid var(--border);
+  border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+.cs-wbtn:hover{border-color:var(--ic-naranjo);color:var(--ic-naranjo)}
+.cs-wbtn:disabled{opacity:.4;cursor:default}
+.cs-wlbl{font-size:13px;font-weight:600;color:var(--text);min-width:124px;
+  text-align:center;white-space:nowrap}
+
+/* ---- barras de filtros ---- */
+.cs-fbar,.cs-anabar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:12px 16px;margin-bottom:18px;box-shadow:var(--shadow)}
+.cs-fld{display:flex;flex-direction:column;gap:4px}
+.cs-fld label{font-size:11px;font-weight:600;color:var(--mut);
+  text-transform:uppercase;letter-spacing:.04em}
+.cs-sel{font-family:inherit;font-size:13px;color:var(--text);background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;padding:6px 10px;min-width:140px}
+.cs-sel:focus{outline:none;border-color:var(--ic-naranjo)}
+.cs-chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);
+  font-weight:500;padding:6px 0;text-transform:none;letter-spacing:0}
+.cs-chk input{accent-color:var(--ic-naranjo)}
+.cs-fmeta{margin-left:auto;font-size:12px;color:var(--mut);align-self:center;text-align:right}
+.cs-pdf{appearance:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;
+  color:var(--ic-naranjo);background:transparent;border:1px solid var(--ic-naranjo);
+  border-radius:7px;padding:5px 11px}
+.cs-pdf:hover{background:var(--ic-naranjo);color:#fff}
+
+/* ---- títulos de sección ---- */
+.cs-h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:15px;
+  font-weight:600;margin:22px 0 11px;color:var(--text);display:flex;
+  align-items:baseline;gap:8px;flex-wrap:wrap}
+.cs-h2 .cs-h2s{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--mut)}
+
+/* ---- grilla de KPIs ---- */
+/* minmax(0,1fr) en vez de 1fr: 1fr = minmax(auto,1fr) impide que la columna se
+   encoja bajo el ancho de su contenido (valores 28px, nombres largos) → en ciertos
+   anchos el grid se desborda y las cards se solapan. minmax(0,...) deja encoger y
+   overflow:hidden de .cs-kpi/.cs-card recorta sin montar. (fix solapamiento 2026-05-28) */
+.cs-kgrid{display:grid;gap:13px}
+.cs-kgrid.k4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cs-kgrid.k5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.cs-kgrid.k6{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:1280px){.cs-kgrid.k6,.cs-kgrid.k5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:880px){.cs-kgrid.k5,.cs-kgrid.k4,.cs-kgrid.k6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cs-kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;box-shadow:var(--shadow);overflow:hidden}
+.cs-kpi .bar{height:3px;border-radius:2px;margin:-14px -16px 12px;background:var(--ic-naranjo)}
+.cs-kpi .v{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:28px;
+  font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.cs-kpi .l{color:var(--mut);font-size:12px;margin-top:3px}
+.cs-kpi .s{color:var(--mut);font-size:11px;margin-top:5px;min-height:14px}
+.cs-kpi .s.up{color:var(--ok)} .cs-kpi .s.down{color:var(--err)}
+
+/* ---- tarjetas / tablas ---- */
+.cs-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);overflow:hidden}
+table.cs-t{width:100%;border-collapse:collapse;font-size:13px}
+.cs-t th{text-align:center;padding:10px 14px;background:var(--surface2);color:var(--mut);
+  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  border-bottom:1px solid var(--border);white-space:nowrap}
+.cs-t td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.cs-t tr:last-child td{border-bottom:0}
+.cs-t td.n{font-weight:600;font-variant-numeric:tabular-nums;text-align:center}
+.cs-t th{cursor:default}
+.cs-t td.dim{color:var(--mut);font-weight:500}
+.cs-t td.name{font-weight:600}
+.cs-t td.ind{padding-left:30px}
+.cs-t td.ctr{text-align:center}
+.cs-t .sub{color:var(--mut);font-weight:500;font-size:11px}
+.cs-clk{cursor:pointer}
+.cs-clk:hover td{background:var(--surface2)}
+.cs-pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
+  background:var(--border);color:var(--mut)}
+.cs-pill.err{background:var(--err-bg);color:var(--err)}
+.cs-pill.ok{background:var(--ok-bg);color:var(--ok)}
+.cs-pill.in{background:var(--info-bg);color:var(--info)}
+.cs-pill.alert{background:var(--alert-bg);color:var(--alert)}
+.cs-bar-mini{height:6px;background:var(--ic-naranjo);border-radius:3px;
+  display:inline-block;vertical-align:middle;min-width:3px}
+.cs-empty{padding:24px;text-align:center;color:var(--mut)}
+.cs-ph{padding:48px 24px;text-align:center;color:var(--mut);
+  background:var(--surface);border:1px dashed var(--border);border-radius:12px}
+
+/* ---- charts ---- */
+.cs-cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:6px}
+.cs-cgrid.one{grid-template-columns:1fr}
+@media(max-width:880px){.cs-cgrid{grid-template-columns:1fr}}
+.cs-chart{padding:14px 16px}
+.cs-ch-t{font-size:12px;font-weight:600;color:var(--mut);margin-bottom:10px;
+  text-transform:uppercase;letter-spacing:.04em}
+.cs-ch-wrap{position:relative;height:280px}
+
+/* ---- modal drill-down ---- */
+.cs-modal-ov{position:fixed;inset:0;background:rgba(0,20,32,.55);
+  display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px}
+.cs-modal{background:var(--surface);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.4);
+  width:100%;max-width:1060px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.cs-modal-h{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border)}
+.cs-modal-t{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:16px;
+  font-weight:700;color:var(--text)}
+.cs-modal-x{appearance:none;cursor:pointer;background:transparent;border:0;
+  font-size:24px;line-height:1;color:var(--mut);padding:0 4px}
+.cs-modal-x:hover{color:var(--ic-naranjo)}
+.cs-modal-b{padding:16px 20px;overflow:auto}
+.cs-mfilt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.cs-mcount{margin-left:auto;font-size:12px;color:var(--mut)}
+.cs-mscroll{overflow-x:scroll;overflow-y:auto;max-height:64vh;
+  border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.cs-mscroll::-webkit-scrollbar{height:13px;width:13px}
+.cs-mscroll::-webkit-scrollbar-thumb{background:var(--mut);border-radius:7px;border:3px solid var(--surface)}
+.cs-mscroll::-webkit-scrollbar-track{background:var(--surface2)}
+.cs-mtable{min-width:100%}
+.cs-mtable thead th{position:sticky;top:0;z-index:1}
+.cs-mtable th,.cs-mtable td{white-space:nowrap;text-align:center}
+.cs-mtable td.l{text-align:left}
+.cs-mtable th{cursor:grab;user-select:none}
+.cs-mtable th:hover{color:var(--ic-naranjo)}
+.cs-mtable th:active{cursor:grabbing}
+.cs-mtable a{color:var(--ic-azul);text-decoration:none;font-weight:600}
+.cs-mtable a:hover{text-decoration:underline}
+.cs-subj{display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+
+/* ---- tab clientes ---- */
+.cs-org-sel{min-width:280px}
+
+/* Cabecera enriquecida del cliente */
+.cs-org-head{padding:20px 22px 22px;display:flex;flex-direction:column;gap:8px;
+  background:linear-gradient(180deg,var(--surface) 0%,var(--surface2) 100%)}
+.cs-org-back{appearance:none;cursor:pointer;background:transparent;border:0;color:var(--mut);
+  font-family:inherit;font-size:11px;font-weight:600;padding:0;display:inline-flex;
+  align-items:center;gap:6px;width:max-content;text-transform:uppercase;letter-spacing:.06em;
+  margin-bottom:4px}
+.cs-org-back:hover{color:var(--ic-naranjo)}
+.cs-org-name{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:22px;
+  font-weight:700;color:var(--text);line-height:1.2;letter-spacing:-.01em}
+.cs-org-meta{font-size:13px;color:var(--mut);font-weight:500;display:flex;
+  flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:2px}
+.cs-org-meta .b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.cs-org-meta .sep{color:var(--border);user-select:none}
+.cs-org-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+
+/* Buscador del estado vacío */
+.cs-org-search{display:flex;align-items:center;gap:10px;background:var(--surface);
+  border:1px solid var(--border);border-radius:10px;padding:10px 14px;
+  margin-top:26px;margin-bottom:14px;box-shadow:var(--shadow);transition:border-color .15s}
+.cs-org-search:focus-within{border-color:var(--ic-naranjo)}
+.cs-org-search .icon{color:var(--mut);font-size:15px;line-height:1}
+.cs-org-search input{flex:1;font-family:inherit;font-size:13px;color:var(--text);
+  background:transparent;border:0;outline:none}
+.cs-org-search input::placeholder{color:var(--mut)}
+
+/* Tabla top clientes con flecha "ir" */
+.cs-org-tbl .cs-arrow{color:var(--mut);font-weight:600;font-size:15px}
+.cs-org-tbl tr.cs-clk:hover .cs-arrow{color:var(--ic-naranjo)}
+
+/* Tablas con scroll horizontal */
+.cs-tscroll{overflow-x:auto}
+.cs-tscroll::-webkit-scrollbar{height:10px}
+.cs-tscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px}
+
+/* Botones de paginación */
+.cs-rc{width:38px;min-width:38px;text-align:center}
+.cs-pbtn{appearance:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;
+  color:var(--mut);background:var(--surface2);border:1px solid var(--border);
+  border-radius:7px;padding:5px 11px;text-transform:none;letter-spacing:0;
+  font-variant-numeric:tabular-nums;transition:all .12s}
+.cs-pbtn:hover{border-color:var(--ic-naranjo);color:var(--ic-naranjo)}
+.cs-pbtn.on{background:var(--ic-naranjo);color:#fff;border-color:var(--ic-naranjo)}
+.cs-pbtn.ghost{background:transparent;border-style:dashed}
+.cs-pnav{display:flex;flex-wrap:wrap;gap:5px;padding:12px 16px;border-top:1px solid var(--border);
+  align-items:center;background:var(--surface2)}
+.cs-pnav .info{font-size:11px;color:var(--mut);margin-right:auto;
+  text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+
+/* Header de card con acción a la derecha */
+.cs-ch-t-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* Recurrencia detectada — grupos expandibles */
+.cs-rec-list{display:flex;flex-direction:column;gap:2px;padding:6px 8px 10px}
+.cs-rec-row{border-radius:8px;overflow:hidden}
+.cs-rec-row.open{background:var(--surface2)}
+.cs-rec-item{appearance:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:9px 12px;width:100%;background:transparent;border:0;text-align:left;
+  font-family:inherit;font-size:13px;color:var(--text);transition:background .12s}
+.cs-rec-item:hover{background:var(--surface2)}
+.cs-rec-item .term{font-weight:600;flex:1;letter-spacing:-.005em}
+.cs-rec-item .caret{color:var(--mut);font-size:11px;font-weight:600;min-width:14px;text-align:center}
+.cs-rec-row.open .cs-rec-item .caret{color:var(--ic-naranjo)}
+.cs-rec-ids{padding:0 14px 12px 34px;font-size:12px;color:var(--mut);line-height:1.9;
+  border-top:1px dashed var(--border);padding-top:8px;margin-top:-2px}
+.cs-rec-ids a{color:var(--ic-azul);text-decoration:none;font-weight:600;
+  margin-right:4px;padding:1px 4px;border-radius:4px}
+.cs-rec-ids a:hover{background:var(--surface);text-decoration:underline}
+.cs-rec-ids .more{color:var(--mut);font-style:italic;margin-left:6px}
+
+/* Estado vacío específico cuando hay cliente seleccionado sin tickets */
+.cs-org-empty-card{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+
+/* Headers sortables de la tabla de activos */
+.cs-clk-th{cursor:pointer;user-select:none;transition:color .12s}
+.cs-clk-th:hover{color:var(--ic-naranjo)}
+.cs-clk-th .arr{display:inline-block;margin-left:3px;color:var(--ic-naranjo);font-size:10px}
+
+/* Botón de acción a la derecha de un cs-h2 (ej. exportar CSV) */
+.cs-h2 .cs-h2-action{margin-left:auto;align-self:center;font-weight:600}
+
+/* ---- multi-select con checkboxes (filtro Equipo) ---- */
+.cs-multi{position:relative;min-width:200px;font-family:inherit}
+.cs-multi-summary{
+  list-style:none;cursor:pointer;padding:6px 30px 6px 11px;font-size:13px;
+  color:var(--text);background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;position:relative;min-height:31px;display:flex;
+  align-items:center;line-height:1.2;user-select:none}
+.cs-multi-summary::-webkit-details-marker{display:none}
+.cs-multi-summary::marker{content:''}
+.cs-multi-summary::after{
+  content:'';position:absolute;right:11px;top:50%;
+  width:8px;height:8px;border-right:1.6px solid var(--mut);
+  border-bottom:1.6px solid var(--mut);
+  transform:translateY(-65%) rotate(45deg);transition:transform .2s ease}
+.cs-multi[open] > .cs-multi-summary::after{transform:translateY(-30%) rotate(-135deg)}
+.cs-multi-summary:hover,
+.cs-multi[open] > .cs-multi-summary{border-color:var(--ic-naranjo)}
+.cs-multi-body{
+  position:absolute;top:calc(100% + 4px);left:0;z-index:60;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,38,58,.16),0 2px 4px rgba(0,38,58,.08);
+  padding:8px;min-width:260px;max-width:340px;max-height:360px;
+  overflow-y:auto;overflow-x:hidden}
+.cs-multi-actions{display:flex;gap:6px;padding:2px 4px 8px;
+  border-bottom:1px solid var(--border);margin-bottom:6px}
+.cs-multi-actions .cs-pbtn{flex:1;padding:5px 8px;font-size:11px;
+  text-transform:uppercase;letter-spacing:.04em}
+.cs-multi-list{display:flex;flex-direction:column;gap:1px}
+.cs-multi-item{display:flex;align-items:center;gap:9px;padding:7px 9px;
+  border-radius:6px;cursor:pointer;font-size:13px;color:var(--text);
+  font-weight:500;transition:background .12s}
+.cs-multi-item:hover{background:var(--surface2)}
+.cs-multi-item input{accent-color:var(--ic-naranjo);cursor:pointer;
+  margin:0;width:15px;height:15px;flex-shrink:0}
+.cs-multi-item span{flex:1;line-height:1.3}
+/* scrollbar del panel */
+.cs-multi-body::-webkit-scrollbar{width:8px}
+.cs-multi-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.cs-multi-body::-webkit-scrollbar-track{background:transparent}
+
+/* ---- Banner de cache stale (Fase B — tickets sin canal_normalizado) ---- */
+.cs-stale-banner{display:flex;align-items:flex-start;gap:12px;
+  background:#fff8e6;color:#7a5400;border:1px solid #f0c674;border-radius:8px;
+  padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.5}
+.cs-app[data-theme=dark] .cs-stale-banner{background:#3a2f0e;color:#f0c674;border-color:#7a5400}
+.cs-stale-icon{font-size:18px;line-height:1;flex-shrink:0}
+.cs-stale-msg{flex:1}
+
+/* ---- Resumen multicanal (Fase B — header cuando channel=all) ---- */
+.cs-mc-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 16px;margin-bottom:14px}
+.cs-mc-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;
+  padding-bottom:8px;border-bottom:1px dashed var(--border);flex-wrap:wrap;gap:8px}
+.cs-mc-title{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:13px;font-weight:700;
+  color:var(--text);letter-spacing:.02em;text-transform:uppercase}
+.cs-mc-total{font-size:12.5px;color:var(--mut)}
+.cs-mc-total b{color:var(--text);font-weight:700}
+.cs-mc-tiles{display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:10px}
+.cs-mc-tile{background:var(--surface2);border-radius:8px;padding:10px 12px;
+  border-left:3px solid var(--ic-naranjo)}
+.cs-mc-l{font-size:11px;font-weight:600;color:var(--mut);text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.cs-mc-l .cs-badge{margin-left:auto;font-size:9px;padding:1px 6px}
+.cs-mc-v{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:22px;font-weight:700;
+  color:var(--text);line-height:1.1}
+.cs-mc-s{font-size:11px;color:var(--mut);margin-top:2px}
+.cs-mc-note{font-size:11.5px;color:var(--mut);font-style:italic;margin-top:8px;
+  padding-top:6px;border-top:1px dashed var(--border)}
+
+/* ---- Tab Paneles Extras (Fase C) ---- */
+.cs-extras-hdr{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.cs-extras-title{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:16px;font-weight:700;color:var(--text)}
+.cs-extras-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));gap:14px}
+.cs-extra-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:18px;cursor:pointer;transition:border-color .15s, transform .1s, box-shadow .15s;
+  display:flex;flex-direction:column;gap:6px;min-height:130px}
+.cs-extra-card:hover{border-color:var(--ic-naranjo);transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(255,106,0,.12)}
+.cs-extra-icon{font-size:28px;line-height:1;margin-bottom:4px}
+.cs-extra-title{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:15px;
+  font-weight:700;color:var(--text)}
+.cs-extra-desc{font-size:12.5px;color:var(--mut);line-height:1.45}
+
+/* ---- Tab DTE Health ---- */
+.cs-dte-tbl{width:100%;border-collapse:collapse;margin-top:12px;background:var(--surface)}
+.cs-dte-tbl th,.cs-dte-tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:13px}
+.cs-dte-tbl thead th{background:var(--surface2);font-weight:600;color:var(--text);position:sticky;top:0;z-index:1}
+.cs-dte-tbl tbody tr:hover{background:var(--surface2)}
+.cs-dte-filter th{padding:4px 8px;background:var(--surface);border-bottom:2px solid var(--border)}
+.cs-dte-fi{width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:4px;
+  font-size:12px;background:var(--surface);color:var(--text);box-sizing:border-box}
+.cs-dte-fi:focus{outline:none;border-color:var(--ic-naranjo);box-shadow:0 0 0 2px rgba(255,106,0,.15)}
+
+/* ---- Modal "Ver datos filtrados" (HU 5 feedback v2 2026-05-28)
+ * Scroll horizontal forzado + footer de paginación cada 20 tickets. */
+.cs-exp-modal-scroll{overflow-x:auto;width:100%;
+  border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.cs-exp-modal-scroll table{min-width:1100px}  /* fuerza scroll horizontal en viewports angostos */
+.cs-exp-modal-scroll table.cs-t th,
+.cs-exp-modal-scroll table.cs-t td{white-space:nowrap}
+.cs-exp-modal-scroll table.cs-t td.l span.cs-subj{white-space:normal;display:inline-block;max-width:300px;vertical-align:middle}
+.cs-exp-modal-pages{display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:14px 12px 4px;font-size:13px}
+.cs-exp-modal-meta{color:var(--mut);font-weight:600;min-width:160px;text-align:center}
+
+/* ---- Panel Exportador (Tab Cliente — HU 5 2026-05-28) ---- */
+.cs-exp{padding:16px 18px}
+.cs-exp-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.cs-exp-rango{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.cs-exp-rango label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--mut);
+  font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.cs-exp-rango input[type=date]{background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;font-size:13px;color:var(--text);
+  font-family:inherit;cursor:pointer;min-width:140px}
+.cs-exp-rango input[type=date]:focus{outline:none;border-color:var(--ic-naranjo);
+  box-shadow:0 0 0 2px rgba(255,106,0,.15)}
+.cs-exp-info{font-size:12px;color:var(--mut);align-self:flex-end;padding-bottom:6px}
+.cs-exp-acts{display:flex;gap:8px;align-items:flex-end;padding-bottom:6px}
+.cs-exp-foot{font-size:11.5px;color:var(--mut);font-style:italic;margin-top:12px;
+  padding-top:10px;border-top:1px dashed var(--border)}
+
+/* ---- Sistema de toast (helper reutilizable HU 5)
+ * El toast se inyecta directo en document.body — fuera del .cs-app — entonces
+ * no hereda las CSS vars del theme. Definimos colores hardcoded por
+ * data-theme attr del propio toast (lo setea showToast()). */
+.cs-toast{position:fixed;top:20px;right:20px;z-index:9999;
+  min-width:280px;max-width:420px;
+  background:#FFFFFF;color:#00263A;
+  border:1px solid #E2E8EB;border-left-width:4px;border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,38,58,.18);
+  padding:14px 16px;padding-right:38px;
+  font-size:13px;line-height:1.5;
+  font-family:'Inter','Segoe UI',sans-serif;
+  animation:cs-toast-in .25s ease-out}
+.cs-toast strong{font-weight:700;color:inherit}
+.cs-toast code{background:#F8FAFC;padding:1px 5px;border-radius:3px;font-size:12px;color:#00263A}
+.cs-toast-info{border-left-color:#0047BB}
+.cs-toast-success{border-left-color:#17A24F}
+.cs-toast-error{border-left-color:#BB1A1A}
+.cs-toast-msg{margin:0}
+.cs-toast-x{position:absolute;top:8px;right:10px;
+  background:none;border:0;font-size:18px;line-height:1;cursor:pointer;
+  color:#5B6B76;padding:2px 6px;border-radius:4px}
+.cs-toast-x:hover{background:#F1F4F6;color:#00263A}
+/* Dark theme: override completo con valores absolutos */
+.cs-toast[data-theme=dark]{background:#15252E;color:#E9EEF0;border-color:#283D48;
+  box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.cs-toast[data-theme=dark] code{background:#1B2F39;color:#E9EEF0}
+.cs-toast[data-theme=dark] .cs-toast-x{color:#8FA3AE}
+.cs-toast[data-theme=dark] .cs-toast-x:hover{background:#1B2F39;color:#E9EEF0}
+@keyframes cs-toast-in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ---- impresión / PDF ---- */
+@media print{
+  .cs-app{background:#fff !important}
+  .cs-topstick{position:static !important;padding-top:0}
+  .cs-tabs,.cs-toolbar,.cs-channel,.cs-fbar .cs-fld,.cs-pdf,.cs-modal-ov,.csh-actions{display:none !important}
+  .cs-toast{display:none !important}
+  .cs-fbar{box-shadow:none;border:0;padding:0;margin-bottom:8px}
+  .cs-fmeta{margin-left:0}
+  .cs-card,.cs-kpi,.cs-chart{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+  .cs-cgrid{break-inside:avoid}
+  .cs-ch-wrap{height:240px}
+}

@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-05-20T17:19:26.668271Z",
+  "groups_consulted": {
+    "4681742537243": "Soporte Nivel 2",
+    "34826267983899": "Customer Success",
+    "4681682013083": "Soporte Nivel 1 CICFIN",
+    "4681689099931": "Configuraciones",
+    "49176446183323": "Enrolamientos Pendientes",
+    "6295736380827": "Adm. de plataforma"
+  },
+  "counts_panel_logic_by_group": {
+    "Soporte Nivel 2": 84,
+    "Customer Success": 41,
+    "Soporte Nivel 1 CICFIN": 7,
+    "Configuraciones": 4,
+    "Enrolamientos Pendientes": 2,
+    "Adm. de plataforma": 1
+  },
+  "totals": {
+    "active_in_6_groups": 293,
+    "fuera_sla_panel_logic": 139,
+    "fuera_sla_zendesk_export": 143,
+    "panel_user_reported": 115,
+    "intersection": 135,
+    "only_export": [
+      1802967,
+      1807473,
+      1813032,
+      1814638,
+      1814885,
+      1815174,
+      1815202,
+      1815880
+    ],
+    "only_recompute": [
+      1815297,
+      1815860,
+      1815902,
+      1815928
+    ]
+  }
+}

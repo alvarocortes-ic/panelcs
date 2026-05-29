@@ -1,0 +1,167 @@
+/* ============================================================
+   cs-view — estilos del Panel CS · iConstruye
+   Fuente versionada. Deploy: assignment "css" del nodo
+   "Construir Vista" (workflow CS View) vía deploy_cs_view.py
+   El tema light/dark lo controla .cs-app[data-theme] del cascarón.
+   ============================================================ */
+.cs-app{
+  --ic-naranjo:#FF6A00; --ic-azul:#0047BB; --ic-fucsia:#EE0F76;
+  --ok:#17A24F; --ok-bg:#E7F7EE; --err:#BB1A1A; --err-bg:#FBE5E5;
+  --alert:#CE8B00; --alert-bg:#FFF7E7; --info:#0047BB; --info-bg:#E7EEFB;
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:14px; line-height:1.5;
+}
+.cs-app[data-theme=light]{
+  --bg:#F1F4F6; --surface:#FFFFFF; --surface2:#F8FAFC; --text:#00263A;
+  --mut:#5B6B76; --border:#E2E8EB; --shadow:0 1px 3px rgba(0,38,58,.09);
+}
+.cs-app[data-theme=dark]{
+  --bg:#0E1A21; --surface:#15252E; --surface2:#1B2F39; --text:#E9EEF0;
+  --mut:#8FA3AE; --border:#283D48; --shadow:0 2px 6px rgba(0,0,0,.45);
+}
+.cs-app{background:var(--bg);color:var(--text);min-height:100vh}
+.cs-wrap{max-width:1280px;margin:0 auto;padding:16px 20px 48px}
+
+/* ---- tabs ---- */
+.cs-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.cs-tab{appearance:none;cursor:pointer;background:transparent;border:0;
+  font-family:inherit;font-size:13px;font-weight:600;color:var(--mut);
+  padding:9px 16px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.cs-tab:hover{color:var(--text)}
+.cs-tab.on{color:var(--ic-naranjo);border-bottom-color:var(--ic-naranjo)}
+
+/* ---- barra sticky (tabs + filtros) bajo el header del cascarón ---- */
+.cs-stickybar{position:sticky;top:var(--hdr-h,60px);z-index:30;
+  background:var(--bg);padding-top:14px}
+.cs-stickybar .cs-fbar{margin-bottom:0}
+
+/* ---- navegación por semana (tab Análisis semanal) ---- */
+.cs-weeknav{display:flex;align-items:center;gap:6px}
+.cs-wbtn{appearance:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;
+  line-height:1;color:var(--text);background:var(--surface2);border:1px solid var(--border);
+  border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+.cs-wbtn:hover{border-color:var(--ic-naranjo);color:var(--ic-naranjo)}
+.cs-wbtn:disabled{opacity:.4;cursor:default}
+.cs-wlbl{font-size:13px;font-weight:600;color:var(--text);min-width:124px;
+  text-align:center;white-space:nowrap}
+
+/* ---- barras de filtros ---- */
+.cs-fbar,.cs-anabar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:12px 16px;margin-bottom:18px;box-shadow:var(--shadow)}
+.cs-fld{display:flex;flex-direction:column;gap:4px}
+.cs-fld label{font-size:11px;font-weight:600;color:var(--mut);
+  text-transform:uppercase;letter-spacing:.04em}
+.cs-sel{font-family:inherit;font-size:13px;color:var(--text);background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;padding:6px 10px;min-width:140px}
+.cs-sel:focus{outline:none;border-color:var(--ic-naranjo)}
+.cs-chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);
+  font-weight:500;padding:6px 0;text-transform:none;letter-spacing:0}
+.cs-chk input{accent-color:var(--ic-naranjo)}
+.cs-fmeta{margin-left:auto;font-size:12px;color:var(--mut);align-self:center;text-align:right}
+.cs-pdf{appearance:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;
+  color:var(--ic-naranjo);background:transparent;border:1px solid var(--ic-naranjo);
+  border-radius:7px;padding:5px 11px}
+.cs-pdf:hover{background:var(--ic-naranjo);color:#fff}
+
+/* ---- títulos de sección ---- */
+.cs-h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:15px;
+  font-weight:600;margin:22px 0 11px;color:var(--text);display:flex;
+  align-items:baseline;gap:8px;flex-wrap:wrap}
+.cs-h2 .cs-h2s{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--mut)}
+
+/* ---- grilla de KPIs ---- */
+.cs-kgrid{display:grid;gap:13px}
+.cs-kgrid.k5{grid-template-columns:repeat(5,1fr)}
+.cs-kgrid.k4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:880px){.cs-kgrid.k5,.cs-kgrid.k4{grid-template-columns:repeat(2,1fr)}}
+.cs-kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;box-shadow:var(--shadow);overflow:hidden}
+.cs-kpi .bar{height:3px;border-radius:2px;margin:-14px -16px 12px;background:var(--ic-naranjo)}
+.cs-kpi .v{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:28px;
+  font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.cs-kpi .l{color:var(--mut);font-size:12px;margin-top:3px}
+.cs-kpi .s{color:var(--mut);font-size:11px;margin-top:5px;min-height:14px}
+.cs-kpi .s.up{color:var(--ok)} .cs-kpi .s.down{color:var(--err)}
+
+/* ---- tarjetas / tablas ---- */
+.cs-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);overflow:hidden}
+table.cs-t{width:100%;border-collapse:collapse;font-size:13px}
+.cs-t th{text-align:center;padding:10px 14px;background:var(--surface2);color:var(--mut);
+  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  border-bottom:1px solid var(--border);white-space:nowrap}
+.cs-t td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.cs-t tr:last-child td{border-bottom:0}
+.cs-t td.n{font-weight:600;font-variant-numeric:tabular-nums;text-align:center}
+.cs-t th{cursor:default}
+.cs-t td.dim{color:var(--mut);font-weight:500}
+.cs-t td.name{font-weight:600}
+.cs-t td.ind{padding-left:30px}
+.cs-t td.ctr{text-align:center}
+.cs-t .sub{color:var(--mut);font-weight:500;font-size:11px}
+.cs-clk{cursor:pointer}
+.cs-clk:hover td{background:var(--surface2)}
+.cs-pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
+  background:var(--border);color:var(--mut)}
+.cs-pill.err{background:var(--err-bg);color:var(--err)}
+.cs-pill.ok{background:var(--ok-bg);color:var(--ok)}
+.cs-pill.in{background:var(--info-bg);color:var(--info)}
+.cs-pill.alert{background:var(--alert-bg);color:var(--alert)}
+.cs-bar-mini{height:6px;background:var(--ic-naranjo);border-radius:3px;
+  display:inline-block;vertical-align:middle;min-width:3px}
+.cs-empty{padding:24px;text-align:center;color:var(--mut)}
+.cs-ph{padding:48px 24px;text-align:center;color:var(--mut);
+  background:var(--surface);border:1px dashed var(--border);border-radius:12px}
+
+/* ---- charts ---- */
+.cs-cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:6px}
+.cs-cgrid.one{grid-template-columns:1fr}
+@media(max-width:880px){.cs-cgrid{grid-template-columns:1fr}}
+.cs-chart{padding:14px 16px}
+.cs-ch-t{font-size:12px;font-weight:600;color:var(--mut);margin-bottom:10px;
+  text-transform:uppercase;letter-spacing:.04em}
+.cs-ch-wrap{position:relative;height:280px}
+
+/* ---- modal drill-down ---- */
+.cs-modal-ov{position:fixed;inset:0;background:rgba(0,20,32,.55);
+  display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px}
+.cs-modal{background:var(--surface);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.4);
+  width:100%;max-width:1060px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.cs-modal-h{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border)}
+.cs-modal-t{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:16px;
+  font-weight:700;color:var(--text)}
+.cs-modal-x{appearance:none;cursor:pointer;background:transparent;border:0;
+  font-size:24px;line-height:1;color:var(--mut);padding:0 4px}
+.cs-modal-x:hover{color:var(--ic-naranjo)}
+.cs-modal-b{padding:16px 20px;overflow:auto}
+.cs-mfilt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.cs-mcount{margin-left:auto;font-size:12px;color:var(--mut)}
+.cs-mscroll{overflow-x:scroll;overflow-y:auto;max-height:64vh;
+  border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.cs-mscroll::-webkit-scrollbar{height:13px;width:13px}
+.cs-mscroll::-webkit-scrollbar-thumb{background:var(--mut);border-radius:7px;border:3px solid var(--surface)}
+.cs-mscroll::-webkit-scrollbar-track{background:var(--surface2)}
+.cs-mtable{min-width:100%}
+.cs-mtable thead th{position:sticky;top:0;z-index:1}
+.cs-mtable th,.cs-mtable td{white-space:nowrap;text-align:center}
+.cs-mtable td.l{text-align:left}
+.cs-mtable th{cursor:grab;user-select:none}
+.cs-mtable th:hover{color:var(--ic-naranjo)}
+.cs-mtable th:active{cursor:grabbing}
+.cs-mtable a{color:var(--ic-azul);text-decoration:none;font-weight:600}
+.cs-mtable a:hover{text-decoration:underline}
+.cs-subj{display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+
+/* ---- impresión / PDF ---- */
+@media print{
+  .cs-app{background:#fff !important}
+  .cs-stickybar{position:static !important;padding-top:0}
+  .cs-tabs,.cs-fbar .cs-fld,.cs-pdf,.cs-modal-ov{display:none !important}
+  .cs-fbar{box-shadow:none;border:0;padding:0;margin-bottom:8px}
+  .cs-fmeta{margin-left:0}
+  .cs-card,.cs-kpi,.cs-chart{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+  .cs-cgrid{break-inside:avoid}
+  .cs-ch-wrap{height:240px}
+}

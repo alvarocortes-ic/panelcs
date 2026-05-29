@@ -1,0 +1,8 @@
+# data/ — dataset seed regenerable con scripts/carga_inicial.py (pesado). No se versiona.
+data/
+# preview del diseño — regenerable, lleva datos embebidos
+preview-panel.html
+.venv/
+__pycache__/
+*.pyc
+.DS_Store

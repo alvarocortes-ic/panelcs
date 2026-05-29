@@ -1,0 +1,20 @@
+{
+  "zendesk": {
+    "tickets_synced_until_unix": 1779820182,
+    "tickets_synced_until_iso": "2026-05-26T18:29:42.473191Z",
+    "last_fetch_iso": "2026-05-26T18:29:42.473196Z",
+    "active_enrichment_last_iso": "2026-05-26T18:30:06.332846Z",
+    "ticket_events_start_time": 1779820206
+  },
+  "aircall": {
+    "calls_from_unix": 1779819248,
+    "calls_synced_until_iso": "2026-05-26T18:25:29.199625Z",
+    "last_fetch_iso": "2026-05-26T18:25:29.199636Z"
+  },
+  "meta": {
+    "schema_version": 1,
+    "min_allowed_since": "2026-01-01",
+    "note": "Cursor compartido entre máquinas vía git. cs-fetch.py lo actualiza tras cada paso exitoso. min_allowed_since es un guardrail — los scripts fallan si el rango pedido es anterior a esta fecha.",
+    "last_save_iso": "2026-05-26T18:57:09.842173Z"
+  }
+}

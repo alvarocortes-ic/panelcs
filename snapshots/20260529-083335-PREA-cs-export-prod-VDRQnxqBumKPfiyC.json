@@ -1,0 +1,245 @@
+{
+  "updatedAt": "2026-05-28T20:11:00.589Z",
+  "createdAt": "2026-05-28T16:47:28.930Z",
+  "id": "VDRQnxqBumKPfiyC",
+  "name": "CS Export - Exportador tickets para análisis IA",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "csexp-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "cs-export-webhook",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cs-export",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "csexp-process",
+      "name": "Process Export",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\n// CS Export — exporta tickets de un cliente en rango como JSONL para análisis IA.\n// Credenciales Zendesk inyectadas al setup-time desde .env.credentials.\n\nconst ZD_BASE = \"https://iconstruye.zendesk.com\";\nconst ZD_AUTH_USER = \"paulina.nazar@iconstruye.com/token\";\nconst ZD_AUTH_PASS = \"Ksm6joGT49ztSVu2nbpHtF33yDO5feIXqDjFJvlC\";\n\nconst startedAt = Date.now();\nconst q = ($input.first().json.query) || {};\nconst org  = String(q.org  || '').trim();\nconst from = String(q.from || '').trim();\nconst to   = String(q.to   || '').trim();\n\nfunction bail(code, errObj) {\n  return [{ json: { ok:false, http_status: code, ...errObj } }];\n}\n\n// Validación\nif (!org || !from || !to) {\n  return bail(400, { error: 'missing_params', message: 'Required: org, from, to (YYYY-MM-DD)' });\n}\nconst reDate = /^\\d{4}-\\d{2}-\\d{2}$/;\nif (!reDate.test(from) || !reDate.test(to)) {\n  return bail(400, { error: 'invalid_date_format', message: 'from/to must be YYYY-MM-DD' });\n}\nconst msFrom = Date.parse(from + 'T00:00:00Z');\nconst msTo   = Date.parse(to   + 'T23:59:59Z');\nif (isNaN(msFrom) || isNaN(msTo) || msFrom > msTo) {\n  return bail(400, { error: 'invalid_range', message: 'from must be <= to' });\n}\nconst dias = Math.floor((msTo - msFrom) / 86400000);\nif (dias > 93) {\n  return bail(400, {\n    error: 'range_exceeded',\n    max_days: 93,\n    requested_days: dias,\n    message: `Range ${dias}d exceeds max ${93}d. Use shorter ranges.`,\n  });\n}\n\n// Helper: llamada autenticada a Zendesk con Basic auth manual\nasync function zd(pathOrUrl) {\n  const isFull = pathOrUrl.startsWith('http');\n  return this.helpers.httpRequest({\n    method: 'GET',\n    url: isFull ? pathOrUrl : (ZD_BASE + pathOrUrl),\n    auth: { username: ZD_AUTH_USER, password: ZD_AUTH_PASS },\n    json: true,\n    timeout: 60000,\n  });\n}\n\n// 1. Buscar tickets del cliente en el rango (paginado, max 10 páginas = 1000 tickets).\n// Zendesk Search API limita a 1000 resultados totales — si el cliente tiene más en\n// el rango, devolvemos error claro para que el usuario reduzca el rango.\nconst query = `organization:${org} created>=${from} created<=${to}`;\nlet tickets = [];\nlet next = `${ZD_BASE}/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100&sort_by=created_at&sort_order=desc`;\nlet pages = 0;\nlet searchCount = null;\nwhile (next && pages < 10) {\n  const data = await zd.call(this, next);\n  if (searchCount === null && typeof data.count === 'number') searchCount = data.count;\n  const batch = data.results || data.tickets || [];\n  tickets = tickets.concat(batch);\n  next = data.next_page || null;\n  pages++;\n}\n\nif (searchCount !== null && searchCount > 1000) {\n  return bail(400, {\n    error: 'too_many_tickets',\n    total_in_range: searchCount,\n    max_supported: 1000,\n    message: `El rango contiene ${searchCount} tickets. Zendesk Search limita a 1000 por consulta. Reduce el rango (intenta períodos más cortos).`,\n  });\n}\n\nif (tickets.length === 0) {\n  const empty = JSON.stringify({\n    _meta: { org, from, to, count: 0, generated_at: new Date().toISOString(), elapsed_ms: Date.now()-startedAt }\n  });\n  return [{\n    json: { ok:true, count:0, org, from, to },\n    binary: {\n      data: {\n        data: Buffer.from(empty + '\\n', 'utf-8').toString('base64'),\n        mimeType: 'application/x-ndjson',\n        fileName: `cs-export-${org}-${from}_${to}.jsonl`,\n      }\n    }\n  }];\n}\n\n// 2. Comments por ticket — PARALELIZADO en batches de 10 (vs secuencial original).\n// Medición real con SODEXO antes de paralelizar: 107 tickets en 80s (0.75s/ticket).\n// Con concurrencia 10, esperamos ~8s para 107 tickets (~10x mejora).\nconst CONCURRENCIA = 10;\nconst enriched = [];\nconst errors = [];\n\nasync function fetchComments(t) {\n  try {\n    const cr = await zd.call(this, `${ZD_BASE}/api/v2/tickets/${t.id}/comments.json`);\n    return (cr.comments || []).map(c => ({\n      id: c.id,\n      author_id: c.author_id,\n      created_at: c.created_at,\n      public: c.public,\n      body: c.body,\n      via_channel: c.via && c.via.channel,\n    }));\n  } catch (e) {\n    errors.push({ ticket_id: t.id, stage: 'comments', error: String(e.message || e).slice(0, 200) });\n    return [];\n  }\n}\n\n// Procesar tickets en batches paralelos\nfor (let i = 0; i < tickets.length; i += CONCURRENCIA) {\n  const batch = tickets.slice(i, i + CONCURRENCIA);\n  const commentsResults = await Promise.all(batch.map(t => fetchComments.call(this, t)));\n  batch.forEach((t, idx) => {\n    const cf = {};\n    (t.custom_fields || []).forEach(f => { cf[f.id] = f.value; });\n    enriched.push({\n      id: t.id,\n      subject: t.subject || '',\n      description: (t.description || '').slice(0, 4000),\n      status: t.status,\n      priority: t.priority,\n      type: t.type,\n      created_at: t.created_at,\n      updated_at: t.updated_at,\n      solved_at: t.solved_at || null,\n      via_channel: (t.via && t.via.channel) || null,\n      assignee_id: t.assignee_id || null,\n      group_id: t.group_id || null,\n      organization_id: t.organization_id || null,\n      requester_id: t.requester_id || null,\n      submitter_id: t.submitter_id || null,\n      tags: t.tags || [],\n      custom_fields: cf,\n      satisfaction_rating: t.satisfaction_rating || null,\n      comments: commentsResults[idx],\n    });\n  });\n}\n\nconst meta = {\n  _meta: {\n    org, from, to,\n    count: enriched.length,\n    generated_at: new Date().toISOString(),\n    elapsed_ms: Date.now() - startedAt,\n    errors: errors.length ? errors : undefined,\n    schema_version: 1,\n    notes: 'JSONL: 1 linea = 1 ticket. Primera linea es _meta. Comments incluye descripcion + respuestas.',\n  }\n};\n\nconst jsonl = [JSON.stringify(meta)]\n  .concat(enriched.map(t => JSON.stringify(t)))\n  .join('\\n') + '\\n';\n\nreturn [{\n  json: {\n    ok: true,\n    count: enriched.length,\n    org, from, to,\n    errors: errors.length,\n    elapsed_ms: Date.now() - startedAt,\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonl, 'utf-8').toString('base64'),\n      mimeType: 'application/x-ndjson',\n      fileName: `cs-export-${org}-${from}_${to}.jsonl`,\n    }\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "csexp-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        300
+      ],
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Export",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Export": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 300
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "315310f1-84ca-4c7b-93d9-d930851f0bf7",
+  "activeVersionId": "315310f1-84ca-4c7b-93d9-d930851f0bf7",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-28T16:47:28.930Z",
+      "createdAt": "2026-05-28T16:47:28.930Z",
+      "role": "workflow:owner",
+      "workflowId": "VDRQnxqBumKPfiyC",
+      "projectId": "o6NFhAZBieSxzM9V",
+      "project": {
+        "updatedAt": "2026-04-29T14:17:41.635Z",
+        "createdAt": "2026-04-29T14:13:59.888Z",
+        "id": "o6NFhAZBieSxzM9V",
+        "name": "Alvaro Cortés <alvaro.cortes@iconstruye.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-28T18:05:18.540Z",
+    "createdAt": "2026-05-28T18:05:18.540Z",
+    "versionId": "315310f1-84ca-4c7b-93d9-d930851f0bf7",
+    "workflowId": "VDRQnxqBumKPfiyC",
+    "nodes": [
+      {
+        "id": "csexp-webhook",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          260,
+          300
+        ],
+        "webhookId": "cs-export-webhook",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "cs-export",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "csexp-process",
+        "name": "Process Export",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          300
+        ],
+        "parameters": {
+          "jsCode": "\n// CS Export — exporta tickets de un cliente en rango como JSONL para análisis IA.\n// Credenciales Zendesk inyectadas al setup-time desde .env.credentials.\n\nconst ZD_BASE = \"https://iconstruye.zendesk.com\";\nconst ZD_AUTH_USER = \"paulina.nazar@iconstruye.com/token\";\nconst ZD_AUTH_PASS = \"Ksm6joGT49ztSVu2nbpHtF33yDO5feIXqDjFJvlC\";\n\nconst startedAt = Date.now();\nconst q = ($input.first().json.query) || {};\nconst org  = String(q.org  || '').trim();\nconst from = String(q.from || '').trim();\nconst to   = String(q.to   || '').trim();\n\nfunction bail(code, errObj) {\n  return [{ json: { ok:false, http_status: code, ...errObj } }];\n}\n\n// Validación\nif (!org || !from || !to) {\n  return bail(400, { error: 'missing_params', message: 'Required: org, from, to (YYYY-MM-DD)' });\n}\nconst reDate = /^\\d{4}-\\d{2}-\\d{2}$/;\nif (!reDate.test(from) || !reDate.test(to)) {\n  return bail(400, { error: 'invalid_date_format', message: 'from/to must be YYYY-MM-DD' });\n}\nconst msFrom = Date.parse(from + 'T00:00:00Z');\nconst msTo   = Date.parse(to   + 'T23:59:59Z');\nif (isNaN(msFrom) || isNaN(msTo) || msFrom > msTo) {\n  return bail(400, { error: 'invalid_range', message: 'from must be <= to' });\n}\nconst dias = Math.floor((msTo - msFrom) / 86400000);\nif (dias > 93) {\n  return bail(400, {\n    error: 'range_exceeded',\n    max_days: 93,\n    requested_days: dias,\n    message: `Range ${dias}d exceeds max ${93}d. Use shorter ranges.`,\n  });\n}\n\n// Helper: llamada autenticada a Zendesk con Basic auth manual\nasync function zd(pathOrUrl) {\n  const isFull = pathOrUrl.startsWith('http');\n  return this.helpers.httpRequest({\n    method: 'GET',\n    url: isFull ? pathOrUrl : (ZD_BASE + pathOrUrl),\n    auth: { username: ZD_AUTH_USER, password: ZD_AUTH_PASS },\n    json: true,\n    timeout: 60000,\n  });\n}\n\n// 1. Buscar tickets del cliente en el rango (paginado, max 10 páginas = 1000 tickets).\n// Zendesk Search API limita a 1000 resultados totales — si el cliente tiene más en\n// el rango, devolvemos error claro para que el usuario reduzca el rango.\nconst query = `organization:${org} created>=${from} created<=${to}`;\nlet tickets = [];\nlet next = `${ZD_BASE}/api/v2/search.json?query=${encodeURIComponent(query)}&per_page=100&sort_by=created_at&sort_order=desc`;\nlet pages = 0;\nlet searchCount = null;\nwhile (next && pages < 10) {\n  const data = await zd.call(this, next);\n  if (searchCount === null && typeof data.count === 'number') searchCount = data.count;\n  const batch = data.results || data.tickets || [];\n  tickets = tickets.concat(batch);\n  next = data.next_page || null;\n  pages++;\n}\n\nif (searchCount !== null && searchCount > 1000) {\n  return bail(400, {\n    error: 'too_many_tickets',\n    total_in_range: searchCount,\n    max_supported: 1000,\n    message: `El rango contiene ${searchCount} tickets. Zendesk Search limita a 1000 por consulta. Reduce el rango (intenta períodos más cortos).`,\n  });\n}\n\nif (tickets.length === 0) {\n  const empty = JSON.stringify({\n    _meta: { org, from, to, count: 0, generated_at: new Date().toISOString(), elapsed_ms: Date.now()-startedAt }\n  });\n  return [{\n    json: { ok:true, count:0, org, from, to },\n    binary: {\n      data: {\n        data: Buffer.from(empty + '\\n', 'utf-8').toString('base64'),\n        mimeType: 'application/x-ndjson',\n        fileName: `cs-export-${org}-${from}_${to}.jsonl`,\n      }\n    }\n  }];\n}\n\n// 2. Comments por ticket — PARALELIZADO en batches de 10 (vs secuencial original).\n// Medición real con SODEXO antes de paralelizar: 107 tickets en 80s (0.75s/ticket).\n// Con concurrencia 10, esperamos ~8s para 107 tickets (~10x mejora).\nconst CONCURRENCIA = 10;\nconst enriched = [];\nconst errors = [];\n\nasync function fetchComments(t) {\n  try {\n    const cr = await zd.call(this, `${ZD_BASE}/api/v2/tickets/${t.id}/comments.json`);\n    return (cr.comments || []).map(c => ({\n      id: c.id,\n      author_id: c.author_id,\n      created_at: c.created_at,\n      public: c.public,\n      body: c.body,\n      via_channel: c.via && c.via.channel,\n    }));\n  } catch (e) {\n    errors.push({ ticket_id: t.id, stage: 'comments', error: String(e.message || e).slice(0, 200) });\n    return [];\n  }\n}\n\n// Procesar tickets en batches paralelos\nfor (let i = 0; i < tickets.length; i += CONCURRENCIA) {\n  const batch = tickets.slice(i, i + CONCURRENCIA);\n  const commentsResults = await Promise.all(batch.map(t => fetchComments.call(this, t)));\n  batch.forEach((t, idx) => {\n    const cf = {};\n    (t.custom_fields || []).forEach(f => { cf[f.id] = f.value; });\n    enriched.push({\n      id: t.id,\n      subject: t.subject || '',\n      description: (t.description || '').slice(0, 4000),\n      status: t.status,\n      priority: t.priority,\n      type: t.type,\n      created_at: t.created_at,\n      updated_at: t.updated_at,\n      solved_at: t.solved_at || null,\n      via_channel: (t.via && t.via.channel) || null,\n      assignee_id: t.assignee_id || null,\n      group_id: t.group_id || null,\n      organization_id: t.organization_id || null,\n      requester_id: t.requester_id || null,\n      submitter_id: t.submitter_id || null,\n      tags: t.tags || [],\n      custom_fields: cf,\n      satisfaction_rating: t.satisfaction_rating || null,\n      comments: commentsResults[idx],\n    });\n  });\n}\n\nconst meta = {\n  _meta: {\n    org, from, to,\n    count: enriched.length,\n    generated_at: new Date().toISOString(),\n    elapsed_ms: Date.now() - startedAt,\n    errors: errors.length ? errors : undefined,\n    schema_version: 1,\n    notes: 'JSONL: 1 linea = 1 ticket. Primera linea es _meta. Comments incluye descripcion + respuestas.',\n  }\n};\n\nconst jsonl = [JSON.stringify(meta)]\n  .concat(enriched.map(t => JSON.stringify(t)))\n  .join('\\n') + '\\n';\n\nreturn [{\n  json: {\n    ok: true,\n    count: enriched.length,\n    org, from, to,\n    errors: errors.length,\n    elapsed_ms: Date.now() - startedAt,\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonl, 'utf-8').toString('base64'),\n      mimeType: 'application/x-ndjson',\n      fileName: `cs-export-${org}-${from}_${to}.jsonl`,\n    }\n  }\n}];\n"
+        }
+      },
+      {
+        "id": "csexp-respond",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          740,
+          300
+        ],
+        "parameters": {
+          "respondWith": "binary",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Process Export",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Export": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Alvaro Cortés",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-28T18:05:26.725Z",
+        "id": 3455,
+        "workflowId": "VDRQnxqBumKPfiyC",
+        "versionId": "315310f1-84ca-4c7b-93d9-d930851f0bf7",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-28T18:05:26.368Z",
+        "id": 3454,
+        "workflowId": "VDRQnxqBumKPfiyC",
+        "versionId": "315310f1-84ca-4c7b-93d9-d930851f0bf7",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-28T18:05:24.301Z",
+        "id": 3453,
+        "workflowId": "VDRQnxqBumKPfiyC",
+        "versionId": "315310f1-84ca-4c7b-93d9-d930851f0bf7",
+        "event": "activated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      },
+      {
+        "createdAt": "2026-05-28T18:05:22.582Z",
+        "id": 3452,
+        "workflowId": "VDRQnxqBumKPfiyC",
+        "versionId": "315310f1-84ca-4c7b-93d9-d930851f0bf7",
+        "event": "deactivated",
+        "userId": "e9509aa6-d3c8-468a-ae85-3ca4ffe070c6"
+      }
+    ]
+  }
+}

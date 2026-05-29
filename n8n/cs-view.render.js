@@ -3264,413 +3264,462 @@ function buildAircallUnavailable(){
     + '</div></div>';
 }
 /* ============================================================
-   VISTA TELÉFONO (Aircall) — rediseño 2026-05-29 (pedido VP Paulina Nazar)
+   VISTA TELÉFONO (Aircall) v2 — 4 TABS (rediseño 2026-05-29, feedback VP)
    ------------------------------------------------------------
-   Reemplaza el modelo "queue por rango + 6 KPIs" por el modelo mental de la VP:
-   RECIBIDAS / CONTESTADAS / PERDIDAS por día (serie temporal) + TASA DE ABANDONO.
-
-   Criterios (verificados contra BD viva PanelCSCalls, 2026-05-29):
-     recibidas  = direction === 'inbound'
-     contestadas= inbound && answered_at (truthy; answered_at es unix-seg o null)
-     perdidas   = inbound && !answered_at        ← NO usar missed_reason (bug raíz viejo)
-   Denominador de tasas = RECIBIDAS (no CALLS.length, que incluía outbound).
-   Bucket por día = TZ del navegador (Chile, DST automático) vía getters locales.
-   started_at/answered_at son UNIX SEGUNDOS (el nodo n8n "Map to snake_case" los
-   deriva con dtToUnix). status ('answered'|'done'|'initial') NO sirve para clasificar.
+   Tabs (semántica del usuario):
+     live  → HOY hasta último sync vs ayer y mismo día sem. pasada (same-hour cutoff)
+     week  → semana actual vs anterior
+     ana   → rango profundo (30d): percentiles de espera, abandono por mesa, rellamadas, off-hours
+     org   → "Por Mesa/Línea" curado (Aircall NO tiene datos de cliente)
+   KPIs (validados contra BD): recibidas/contestadas/perdidas, tasa contestación/abandono,
+   ASA (frt_sec), abandono ajustado (duration<=10s), talk time (ended_at-answered_at),
+   rellamadas (raw_digits, sin troncales), off-hours (L-V 8:30-20 / Sáb 8:30-13:30).
+   SLA %<=Ns: NO se muestra aún (meta a acordar con VP) — sí ASA y percentiles de espera.
    ============================================================ */
 
-/* Colores (paleta iConstruye). Rojo se aclara en dark para contraste. */
-var AC_ANS  = '#17A24F';                                   /* verde contestadas */
-var AC_LOST = (THEME === 'dark') ? '#F2555A' : '#BB1A1A';  /* rojo perdidas */
-var AC_RECV = '#0047BB';                                   /* azul recibidas */
-var AC_SEGB = (THEME === 'dark') ? '#15252E' : '#FFFFFF';  /* borde entre segmentos (= surface) */
+/* Colores paleta iConstruye (rojo más luminoso en dark). */
+var AC_ANS  = '#17A24F';
+var AC_LOST = (THEME === 'dark') ? '#F2555A' : '#BB1A1A';
+var AC_RECV = '#0047BB';
+var AC_WAIT = '#FF6A00';
+var AC_SEGB = (THEME === 'dark') ? '#15252E' : '#FFFFFF';
+
+var AC_ABAND_UMBRAL = 10;  /* parámetro: perdidas con duration<=Ns = abandono corto (equivocación). Acordar con CS. */
 
 function acAlpha(hex, a){
   var h = hex.replace('#','');
   if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
-  var r = parseInt(h.substr(0,2),16), g = parseInt(h.substr(2,2),16), b = parseInt(h.substr(4,2),16);
-  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  return 'rgba(' + parseInt(h.substr(0,2),16) + ',' + parseInt(h.substr(2,2),16) + ',' + parseInt(h.substr(4,2),16) + ',' + a + ')';
 }
 function acPad(n){ return (n<10?'0':'') + n; }
 function acDayKey(d){ return d.getFullYear() + '-' + acPad(d.getMonth()+1) + '-' + acPad(d.getDate()); }
-/* % seguro: null si no hay denominador (jamás 0%/NaN% falsos) */
 function acPct(n, d){ return d > 0 ? Math.round(n*100/d) : null; }
 function acPctTxt(n, d){ var p = acPct(n,d); return p == null ? '—' : p + '%'; }
-/* Color semáforo de abandono (var CSS, theme-aware). null → neutro. */
+function acFmtSec(s){
+  if (s == null || isNaN(s)) return '—';
+  s = Math.round(s);
+  if (s < 60) return s + 's';
+  var m = Math.floor(s/60);
+  return m + 'm ' + acPad(s - m*60) + 's';
+}
+/* Semáforo de abandono por banda industria (verde<5 / ámbar 5-10 / rojo>10). */
 function acAbColor(pct){
   if (pct == null) return 'var(--mut)';
-  if (pct < 15) return 'var(--ok)';
-  if (pct <= 25) return 'var(--alert)';
+  if (pct < 5) return 'var(--ok)';
+  if (pct <= 10) return 'var(--alert)';
   return 'var(--err)';
 }
+function acPctil(arr, p){
+  if (!arr || !arr.length) return null;
+  var a = arr.slice().sort(function(x,y){ return x-y; });
+  return a[Math.min(a.length-1, Math.floor(p/100 * a.length))];
+}
+function acSrc(){ return (window.__CS_CALLS && window.__CS_CALLS.length) ? window.__CS_CALLS : (CALLS_ALL || []); }
 
-/* Ventana de la serie por día según el tab activo (ramifica por Aircall, NO usa
-   computeAnaWindow → su default S.mode='day' da 1 día y lo comparte con Zendesk).
-   Los días se construyen por COMPONENTES de calendario (getDate()±n), no por
-   aritmética de ms, para aterrizar siempre en medianoche local real (robusto a DST). */
-function acSeriesWindow(){
-  var now = new Date();
-  var n = 14, label = 'últimos 14 días';
-  if (S.tab === 'week') {
-    /* la semana del tab (lun→dom) */
-    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (S.weekOffset || 0) * 7, 0,0,0,0);
-    var dow = (d.getDay() + 6) % 7;   /* 0 = lunes */
-    var mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow, 0,0,0,0);
-    var days = [];
-    for (var i = 0; i < 7; i++) days.push(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i, 0,0,0,0));
-    return { days: days, label: 'semana del ' + fmtDM(mon) };
-  }
-  var arr = [];
-  for (var j = n - 1; j >= 0; j--) arr.push(new Date(now.getFullYear(), now.getMonth(), now.getDate() - j, 0,0,0,0));
-  return { days: arr, label: label };
+/* Horario laboral CS (Alvaro 2026-05-29): L-V 8:30-20:00, Sáb 8:30-13:30, Dom cerrado.
+   Recibe una Date local (navegador en Chile). */
+function acEsLaboral(d){
+  var dow = d.getDay();                       /* 0=dom .. 6=sáb */
+  var mins = d.getHours()*60 + d.getMinutes();
+  if (dow === 0) return false;                /* domingo cerrado */
+  if (dow === 6) return mins >= 510 && mins < 810;   /* sáb 8:30(510)-13:30(810) */
+  return mins >= 510 && mins < 1200;          /* L-V 8:30(510)-20:00(1200) */
 }
 
-/* Computa la serie inbound por día sobre la ventana. Pura e idempotente:
-   la llaman buildAircallView (HTML) y drawAircallCharts (gráfico).
-   byDay incluye 7 días PREVIOS al primer día visible (para deltas vs sem. anterior,
-   incluso en tab 'week' donde la ventana visible son sólo 7 días). winKeys = días
-   VISIBLES, lo usan las secciones secundarias (mesa/motivos/operativo) para contar
-   sobre EXACTAMENTE el mismo universo que la serie (evita descuadres). */
-function acComputeSeries(){
-  var win = acSeriesWindow();
-  var visKeys = win.days.map(acDayKey);
-  var winKeys = {};
-  for (var k = 0; k < visKeys.length; k++) winKeys[visKeys[k]] = true;
-
-  /* byDay = días visibles + 7 previos (para los deltas) */
-  var byDay = {};
-  for (var i = 0; i < visKeys.length; i++) byDay[visKeys[i]] = { rec:0, ans:0, lost:0 };
-  var first = win.days[0];
-  for (var e = 1; e <= 7; e++) {
-    var pd = new Date(first.getFullYear(), first.getMonth(), first.getDate() - e, 0,0,0,0);
-    byDay[acDayKey(pd)] = { rec:0, ans:0, lost:0 };
-  }
-
-  var dropped = 0;
-  var src = (window.__CS_CALLS && window.__CS_CALLS.length) ? window.__CS_CALLS : CALLS_ALL;
-  for (var c2 = 0; c2 < src.length; c2++) {
-    var c = src[c2];
+/* Estadísticas de servicio sobre un array de calls (sólo inbound).
+   talk = ended_at - answered_at (NO duration, que incluye el ring). */
+function acStats(calls){
+  var rec=0, ans=0, lost=0, lostCorto=0;
+  var asaArr=[], talkArr=[], lostDurArr=[];
+  for (var i=0; i<calls.length; i++){
+    var c = calls[i];
     if (c.direction !== 'inbound') continue;
-    var ts = c.started_at;
-    if (typeof ts !== 'number' || !isFinite(ts) || ts <= 0) { dropped++; continue; }
-    var key = acDayKey(new Date(ts * 1000));
-    var bucket = byDay[key];
-    if (!bucket) continue;   /* fuera de ventana+previos */
-    bucket.rec++;
-    if (c.answered_at) bucket.ans++; else bucket.lost++;
+    rec++;
+    if (c.answered_at){
+      ans++;
+      if (typeof c.frt_sec === 'number' && c.frt_sec >= 0) asaArr.push(c.frt_sec);
+      if (typeof c.ended_at === 'number' && typeof c.answered_at === 'number'){
+        var t = c.ended_at - c.answered_at;
+        if (t >= 0 && t < 14400) talkArr.push(t);
+      }
+    } else {
+      lost++;
+      if (typeof c.duration === 'number' && c.duration >= 0){
+        lostDurArr.push(c.duration);
+        if (c.duration <= AC_ABAND_UMBRAL) lostCorto++;
+      }
+    }
   }
+  function avg(a){ return a.length ? a.reduce(function(x,y){return x+y;},0)/a.length : null; }
+  return {
+    rec:rec, ans:ans, lost:lost, lostCorto:lostCorto,
+    contestPct: acPct(ans, rec),
+    abandPct: acPct(lost, rec),
+    abandAjustPct: acPct(lost - lostCorto, rec - lostCorto),
+    asa: avg(asaArr), asaN: asaArr.length,
+    talk: avg(talkArr), talkN: talkArr.length,
+    asaArr: asaArr, lostDurArr: lostDurArr
+  };
+}
 
+/* Calls en [fromUnix, toUnix) por started_at (cualquier dirección). */
+function acInRange(fromUnix, toUnix){
+  var src = acSrc(), out = [];
+  for (var i=0; i<src.length; i++){
+    var t = src[i].started_at;
+    if (typeof t === 'number' && t >= fromUnix && t < toUnix) out.push(src[i]);
+  }
+  return out;
+}
+/* Límites unix [00:00, +24h) de una Date local. */
+function acDayBounds(d){
+  var s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+  var from = Math.floor(s.getTime()/1000);
+  return { from: from, to: from + 86400 };
+}
+
+/* Análisis de rellamadas por raw_digits, excluyendo troncales (>P99 llamadas).
+   Devuelve: rellamadaPct, perdidasSinReintento (clientes con perdida y sin llamada
+   posterior en la ventana V segundos), perdidasRecuperadas. */
+function acCallbackAnalysis(calls, ventanaSeg){
+  /* agrupar por raw_digits */
+  var byNum = {};
+  for (var i=0; i<calls.length; i++){
+    var c = calls[i];
+    if (c.direction !== 'inbound' || !c.raw_digits || typeof c.started_at !== 'number') continue;
+    (byNum[c.raw_digits] = byNum[c.raw_digits] || []).push(c);
+  }
+  var nums = Object.keys(byNum);
+  /* excluir troncales: P99 de nº de llamadas por número */
+  var counts = nums.map(function(k){ return byNum[k].length; });
+  var p99 = acPctil(counts, 99) || 9999;
+  var conRellamada = 0, base = 0, sinReintento = 0, recuperadas = 0;
+  for (var n=0; n<nums.length; n++){
+    var arr = byNum[nums[n]];
+    if (arr.length > p99) continue;               /* troncal/PBX → excluir */
+    base++;
+    arr.sort(function(a,b){ return a.started_at - b.started_at; });
+    if (arr.length > 1) conRellamada++;
+    /* perdidas sin reintento: existe una perdida sin NINGUNA llamada posterior dentro de V */
+    var tuvoPerdida=false, recuperada=false, sinRe=false;
+    for (var k=0; k<arr.length; k++){
+      if (!arr[k].answered_at){
+        tuvoPerdida = true;
+        var hayPosterior=false, hayContestPosterior=false;
+        for (var m=k+1; m<arr.length; m++){
+          if (arr[m].started_at - arr[k].started_at <= ventanaSeg){
+            hayPosterior = true;
+            if (arr[m].answered_at) hayContestPosterior = true;
+          }
+        }
+        if (hayContestPosterior) recuperada = true;
+        if (!hayPosterior) sinRe = true;
+      }
+    }
+    if (recuperada) recuperadas++;
+    if (sinRe && !recuperada) sinReintento++;
+  }
+  return {
+    base: base, p99: p99,
+    rellamadaPct: acPct(conRellamada, base),
+    perdidasSinReintento: sinReintento,
+    perdidasRecuperadas: recuperadas
+  };
+}
+
+/* Clasificación de number_name para el tab "Por Mesa/Línea".
+   EXCLUYE de la cara la contaminación clara (PII de agentes, números crudos, "Libre").
+   El resto (IVRs + clientes + funcionales) se muestra como mesa legítima.
+   NOTA: la distinción fina cliente-real vs mesa-funcional la define la líder en
+   MAPPING-MESAS.md (hoy sin curar) — por eso no se sub-clasifica aquí, solo se excluye PII/basura. */
+var AC_AGENTES_PII = {
+  'Jessica Vélez':1,'Natalia Ruiz':1,'Gloria Rebolledo':1,'Alberto Mercado':1,
+  'Javiera Castro':1,'Joel Campos':1,'Monica Salas':1,'Fernanda Lillo':1
+};
+function acMesaExcluir(numberName){
+  if (!numberName) return true;
+  if (AC_AGENTES_PII[numberName]) return true;           /* PII de agente */
+  if (/^\d+$/.test(numberName)) return true;             /* número crudo */
+  if (/^Libre\s*\d*$/i.test(numberName)) return true;    /* Libre 1/2/3/4 */
+  return false;
+}
+
+/* ---- helpers de tabla con columnas CENTRADas (fix formato VP 2026-05-29) ---- */
+function acThC(txt){ return '<th style="text-align:center">' + esc(txt) + '</th>'; }
+function acTdC(html){ return '<td style="text-align:center">' + html + '</td>'; }
+/* serie por día: array de Dates → [{key,label,date,isWeekend,isToday,rec,ans,lost,abandPct}] */
+function acSerieDias(dates){
   var todayKey = acDayKey(new Date());
-  var days = win.days.map(function(d){
-    var key = acDayKey(d);
-    var b = byDay[key];
-    var dow = d.getDay();
-    return {
-      key: key, date: d, label: fmtDM(d),
-      dow: dow, isWeekend: (dow === 0 || dow === 6),
-      isToday: (key === todayKey),
-      rec: b.rec, ans: b.ans, lost: b.lost
-    };
+  return dates.map(function(d){
+    var b = acDayBounds(d);
+    var st = acStats(acInRange(b.from, b.to));
+    return { key:acDayKey(d), label:fmtDM(d), date:d,
+      isWeekend:(d.getDay()===0||d.getDay()===6), isToday:(acDayKey(d)===todayKey),
+      rec:st.rec, ans:st.ans, lost:st.lost, abandPct:st.abandPct };
   });
+}
+/* delta textual entre dos números (▲/▼ %). good='down' → subir es malo. */
+function acDeltaTxt(cur, prev, atipico){
+  if (atipico) return '<span class="s">día atípico (sin comparable)</span>';
+  if (prev == null || prev === 0) return '<span class="s">—</span>';
+  var diff = cur - prev;
+  if (diff === 0) return '<span class="s">→ igual</span>';
+  var pct = Math.round(Math.abs(diff)*100/prev);
+  return '<span class="s">' + (diff>0?'▲':'▼') + ' ' + pct + '%</span>';
+}
+var AC_BADGE = '<span class="cs-badge cs-badge-ac">AIRCALL</span>';
 
-  var tot = { rec:0, ans:0, lost:0 };
-  days.forEach(function(d){ tot.rec += d.rec; tot.ans += d.ans; tot.lost += d.lost; });
-
-  /* Día base de los tiles = último día CERRADO (no hoy) con actividad; fallback ayer. */
-  var baseIdx = -1;
-  for (var bi = days.length - 1; bi >= 0; bi--) {
-    if (days[bi].isToday) continue;
-    if (days[bi].rec > 0) { baseIdx = bi; break; }
-  }
-  if (baseIdx === -1) for (var bj = days.length - 1; bj >= 0; bj--) { if (!days[bj].isToday) { baseIdx = bj; break; } }
-
-  return { win: win, days: days, byKey: byDay, winKeys: winKeys, tot: tot, dropped: dropped,
-           todayKey: todayKey, baseIdx: baseIdx };
+/* guard de carga / sin datos */
+function acGuard(){
+  var src = acSrc();
+  if (src && src.length) return null;
+  var loading = window.__CS_CALLS_LOADING;
+  return '<div class="cs-card" style="padding:32px;text-align:center;color:var(--mut)">'
+    + '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">'
+    + (loading ? 'Cargando llamadas Aircall…' : 'Sin datos Aircall') + '</div>'
+    + '<div style="font-size:13px;margin-bottom:14px">'
+    + (loading ? 'Descargando el seed Aircall (≈ 3 MB · primera vez del día). Se actualiza solo al terminar.'
+               : 'No se pudo cargar el seed Aircall. Reintenta la descarga.') + '</div>'
+    + (loading ? '<div style="font-size:24px">⏳</div>'
+               : '<button class="cs-lbtn" id="acRetryBtn" style="display:inline-block;width:auto;padding:8px 18px">Reintentar descarga</button>')
+    + '</div>';
 }
 
-/* Delta de un valor vs el mismo día de la semana anterior (key − 7 días). */
-function acDelta(series, baseIdx, field){
-  if (baseIdx < 0) return '';
-  var base = series.days[baseIdx];
-  var prevKey = acDayKey(new Date(base.date.getTime() - 7*86400000));
-  var prev = series.byKey[prevKey];
-  if (!prev) return '';   /* sin comparable en la ventana */
-  var cur = base[field], pv = prev[field];
-  if (pv === 0) return '';
-  var diff = cur - pv;
-  if (diff === 0) return '<span class="s">→ igual vs sem. ant.</span>';
-  var pct = Math.round(Math.abs(diff)*100/pv);
-  var up = diff > 0;
-  /* up=true es "más"; el signo bueno/malo depende de la métrica → color neutro salvo nota */
-  return '<span class="s">' + (up ? '▲' : '▼') + ' ' + pct + '% vs sem. ant.</span>';
-}
-
+/* ============================ DISPATCHER ============================ */
 function buildAircallView(){
-  var src = (window.__CS_CALLS && window.__CS_CALLS.length) ? window.__CS_CALLS : CALLS_ALL;
-  if (!src || src.length === 0) {
-    var loading = window.__CS_CALLS_LOADING;
-    return '<div class="cs-card" style="padding:32px;text-align:center;color:var(--mut)">'
-      + '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">'
-      + (loading ? 'Cargando llamadas Aircall…' : 'Sin datos Aircall')
-      + '</div>'
-      + '<div style="font-size:13px;margin-bottom:14px">'
-      + (loading
-          ? 'Descargando el seed Aircall (≈ 3 MB · primera vez del día). Esta vista se actualiza automáticamente al terminar.'
-          : 'No se pudo cargar el seed Aircall (¿n8n caído al iniciar el panel?). Haz clic en el botón para reintentar.')
-      + '</div>'
-      + (loading
-          ? '<div style="font-size:24px">⏳</div>'
-          : '<button class="cs-lbtn" id="acRetryBtn" style="display:inline-block;width:auto;padding:8px 18px">Reintentar descarga</button>')
-      + '</div>';
-  }
+  var g = acGuard(); if (g) return g;
+  if (S.tab === 'live') return buildAcLive();
+  if (S.tab === 'week') return buildAcWeek();
+  if (S.tab === 'org')  return buildAcMesa();
+  return buildAcAnalisis();   /* 'ana' y cualquier otro */
+}
 
-  var series = acComputeSeries();
-  var days = series.days, tot = series.tot;
-  var badgeAC = '<span class="cs-badge cs-badge-ac">AIRCALL</span>';
+/* ============================ TAB EN VIVO ============================ */
+/* Hoy hasta el último sync, comparado same-hour con ayer y mismo día sem. pasada. */
+function buildAcLive(){
+  var now = new Date();
+  var hoy0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+  var hoyFrom = Math.floor(hoy0.getTime()/1000);
+  var nowU = Math.floor(now.getTime()/1000);
+  var offset = nowU - hoyFrom;                       /* segundos transcurridos hoy */
+  var ayer0 = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()-1, 0,0,0,0).getTime()/1000);
+  var sem0  = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()-7, 0,0,0,0).getTime()/1000);
 
-  /* ── Cabecera + 4 tiles (día base = último día cerrado con actividad) ── */
-  var base = series.baseIdx >= 0 ? days[series.baseIdx] : { rec:0, ans:0, lost:0, label:'—' };
-  var baseAb = acPct(base.lost, base.rec);
-  var todayD = null;
-  for (var td = 0; td < days.length; td++) if (days[td].isToday) todayD = days[td];
+  var hoy   = acStats(acInRange(hoyFrom, nowU));
+  var ayer  = acStats(acInRange(ayer0, ayer0 + offset));
+  var sem   = acStats(acInRange(sem0,  sem0  + offset));
+  var ayerAtip = ayer.rec < 10, semAtip = sem.rec < 10;
 
-  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:4px">'
-    + 'Teléfono (Aircall) ' + badgeAC + ' · <b style="color:var(--text)">' + esc(series.win.label) + '</b>'
-    + (todayD ? ' · hoy en curso: ' + todayD.rec + ' recibidas / ' + todayD.lost + ' perdidas (parcial)' : '')
-    + '</div>'
-    + '<div style="font-size:12.5px;color:var(--mut);margin-bottom:11px">Estado de <b style="color:var(--text)">'
-    + esc(base.label) + '</b> (último día cerrado) · comparado vs el mismo día de la semana anterior</div>';
+  var hhmm = acPad(now.getHours()) + ':' + acPad(now.getMinutes());
+  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:4px">Teléfono ' + AC_BADGE
+    + ' · <b style="color:var(--text)">hoy hasta ' + hhmm + '</b> (intradía acumulado)</div>'
+    + '<div style="font-size:11.5px;color:var(--mut);margin-bottom:11px">⚠ Datos hasta el último sync (≤5 min) — no es estado de cola en vivo. Comparado vs ayer y vs el mismo día de la semana pasada, recortados a la misma hora.</div>';
 
   html += '<div class="cs-kgrid k4">';
-  html += kpiCard(base.rec.toLocaleString('es-CL'),  'Recibidas',   acDelta(series, series.baseIdx, 'rec'), AC_RECV);
-  html += kpiCard(base.ans.toLocaleString('es-CL'),  'Contestadas', acDelta(series, series.baseIdx, 'ans'), AC_ANS);
-  html += kpiCard(base.lost.toLocaleString('es-CL'), 'Perdidas',    acDelta(series, series.baseIdx, 'lost'), AC_LOST);
-  /* Tile-4: tasa de abandono con semáforo (número coloreado inline + borde de acento) */
-  var abCol = acAbColor(baseAb);
-  var periodAb = acPct(tot.lost, tot.rec);
-  html += '<div class="cs-kpi" style="border-color:' + abCol + ';box-shadow:inset 0 0 0 1px ' + abCol + '">'
-    + '<div class="bar" style="background:' + abCol + '"></div>'
-    + '<div class="v" style="color:' + abCol + '">' + acPctTxt(base.lost, base.rec) + '</div>'
-    + '<div class="l">Tasa de abandono</div>'
-    + '<div class="s" title="Perdidas ÷ Recibidas. Días de alto volumen inflan el abandono por capacidad; leer junto a Recibidas.">'
-    + 'período: ' + acPctTxt(tot.lost, tot.rec) + '</div>'
-    + '</div>';
+  html += '<div class="cs-kpi"><div class="bar" style="background:' + AC_RECV + '"></div>'
+    + '<div class="v">' + hoy.rec.toLocaleString('es-CL') + '</div><div class="l">Recibidas hoy</div>'
+    + '<div class="s">vs ayer ' + acDeltaTxt(hoy.rec, ayer.rec, ayerAtip).replace(/<\/?span[^>]*>/g,'') + ' · vs sem.ant ' + acDeltaTxt(hoy.rec, sem.rec, semAtip).replace(/<\/?span[^>]*>/g,'') + '</div></div>';
+  html += kpiCard(acPctTxt(hoy.ans, hoy.rec), 'Contestación', hoy.ans + ' de ' + hoy.rec, AC_ANS);
+  var abCol = acAbColor(hoy.abandPct);
+  html += '<div class="cs-kpi" style="border-color:' + abCol + '"><div class="bar" style="background:' + abCol + '"></div>'
+    + '<div class="v" style="color:' + abCol + '">' + acPctTxt(hoy.lost, hoy.rec) + '</div><div class="l">Abandono hoy</div>'
+    + '<div class="s">' + hoy.lost + ' perdidas · vs ayer ' + acDeltaTxt(hoy.abandPct||0, ayer.abandPct, ayerAtip).replace(/<\/?span[^>]*>/g,'') + '</div></div>';
+  html += kpiCard(acFmtSec(hoy.asa), 'Espera prom. (ASA)', hoy.asaN + ' con dato', AC_WAIT);
   html += '</div>';
 
-  /* ── Banda resumen del período (número reportable a jefatura) ── */
-  html += '<div class="cs-card" style="margin:6px 0 14px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:22px;font-size:13px">'
-    + '<span style="color:var(--mut)">Total del período (' + esc(series.win.label) + '):</span>'
-    + '<span><b style="color:' + AC_RECV + '">' + tot.rec.toLocaleString('es-CL') + '</b> recibidas</span>'
-    + '<span><b style="color:' + AC_ANS  + '">' + tot.ans.toLocaleString('es-CL') + '</b> contestadas</span>'
-    + '<span><b style="color:' + AC_LOST + '">' + tot.lost.toLocaleString('es-CL') + '</b> perdidas</span>'
-    + '<span>abandono ponderado <b style="color:' + acAbColor(periodAb) + '">' + acPctTxt(tot.lost, tot.rec) + '</b></span>'
-    + '<span>atención <b style="color:var(--ok)">' + acPctTxt(tot.ans, tot.rec) + '</b></span>'
-    + '</div>';
-
-  /* ── Gráfico protagonista: barras apiladas por día ── */
-  html += '<div class="cs-h2">Llamadas por día ' + badgeAC
-    + '<span class="cs-h2s">contestadas (verde) + perdidas (rojo) = recibidas · fin de semana atenuado</span></div>'
-    + chartCard('', 'cAcDaySeries', 320);
-
-  /* ── Tabla de respaldo por día (dato duro exacto) ── */
-  html += '<div class="cs-h2">Detalle por día ' + badgeAC + '</div>'
-    + '<div class="cs-card"><table class="cs-t"><thead><tr>'
-    + '<th>Día</th><th class="num">Recibidas</th><th class="num">Contestadas</th>'
-    + '<th class="num">Perdidas</th><th class="num">% Abandono</th></tr></thead><tbody>';
-  for (var r = days.length - 1; r >= 0; r--) {
-    var d = days[r];
-    var ab = acPct(d.lost, d.rec);
-    var rowStyle = d.isWeekend ? ' style="opacity:.55"' : '';
-    var tag = d.isToday ? ' <span style="color:var(--ic-naranjo);font-size:11px">parcial</span>'
-            : (d.isWeekend ? ' <span style="color:var(--mut);font-size:11px">finde</span>' : '');
-    html += '<tr' + rowStyle + '><td>' + esc(d.label) + tag + '</td>'
-      + '<td class="num">' + d.rec.toLocaleString('es-CL') + '</td>'
-      + '<td class="num">' + d.ans.toLocaleString('es-CL') + '</td>'
-      + '<td class="num">' + d.lost.toLocaleString('es-CL') + '</td>'
-      + '<td class="num" style="color:' + acAbColor(ab) + ';font-weight:600">' + acPctTxt(d.lost, d.rec) + '</td></tr>';
-  }
-  html += '</tbody></table></div>';
-
-  /* ── Abandono por mesa (accionable para dotación — sugerencia de negocio) ── */
-  /* acInWin: misma pertenencia por day-key que la serie → universo idéntico (sin rangos de ms). */
-  function acInWin(c){
-    if (typeof c.started_at !== 'number' || !isFinite(c.started_at) || c.started_at <= 0) return false;
-    return !!series.winKeys[acDayKey(new Date(c.started_at * 1000))];
-  }
-  var byMesa = {};
-  for (var m = 0; m < src.length; m++) {
-    var cc = src[m];
-    if (cc.direction !== 'inbound') continue;
-    if (!acInWin(cc)) continue;
-    var mesa = getMesa(cc.number_name) || 'Sin mesa';
-    if (!byMesa[mesa]) byMesa[mesa] = { rec:0, lost:0 };
-    byMesa[mesa].rec++;
-    if (!cc.answered_at) byMesa[mesa].lost++;
-  }
-  var mesasArr = Object.keys(byMesa).map(function(k){ return [k, byMesa[k]]; })
-    .filter(function(e){ return e[1].rec > 0; })
-    .sort(function(a,b){ return b[1].lost - a[1].lost; });
-  if (mesasArr.length) {
-    html += '<div class="cs-h2">Abandono por mesa ' + badgeAC
-      + '<span class="cs-h2s">mesa derivada del número Aircall · ' + esc(series.win.label) + '</span></div>'
-      + '<div class="cs-card"><table class="cs-t"><thead><tr>'
-      + '<th>Mesa</th><th class="num">Recibidas</th><th class="num">Perdidas</th><th class="num">% Abandono</th></tr></thead><tbody>';
-    for (var mm = 0; mm < mesasArr.length; mm++) {
-      var mn = mesasArr[mm][0], mv = mesasArr[mm][1];
-      var mab = acPct(mv.lost, mv.rec);
-      html += '<tr><td>' + esc(mn) + '</td>'
-        + '<td class="num">' + mv.rec.toLocaleString('es-CL') + '</td>'
-        + '<td class="num">' + mv.lost.toLocaleString('es-CL') + '</td>'
-        + '<td class="num" style="color:' + acAbColor(mab) + ';font-weight:600">' + acPctTxt(mv.lost, mv.rec) + '</td></tr>';
-    }
-    html += '</tbody></table></div>';
-  }
-
-  /* ── Acordeón: Motivos de pérdida (honesto sobre el gap de ingesta) ── */
-  var byReason = {}, lostWithReason = 0, lostTotalWin = 0;
-  for (var rr = 0; rr < src.length; rr++) {
-    var rc = src[rr];
-    if (rc.direction !== 'inbound' || rc.answered_at) continue;
-    if (!acInWin(rc)) continue;
-    lostTotalWin++;
-    if (rc.missed_reason) { byReason[rc.missed_reason] = (byReason[rc.missed_reason]||0) + 1; lostWithReason++; }
-  }
-  var reasonLabels = {
-    'no_available_agent':'Sin agente disponible', 'agents_did_not_answer':'Agentes no atendieron',
-    'short_abandoned':'Abandono corto', 'abandoned_in_ivr':'Abandono en IVR',
-    'abandoned_in_classic':'Abandono clásico', 'out_of_opening_hours':'Fuera de horario'
-  };
-  var sinMotivo = lostTotalWin - lostWithReason;
-  html += '<details class="cs-acc" style="margin-top:14px">'
-    + '<summary class="cs-multi-summary">Motivos de pérdida ' + badgeAC
-    + (sinMotivo > 0 ? ' &nbsp;<span style="color:var(--alert);font-size:11px">⚠ motivo no disponible en la ingesta en vivo</span>' : '')
-    + '</summary>'
-    + '<div style="padding:10px 2px">'
-    + '<div style="font-size:12px;color:var(--mut);margin-bottom:8px">El motivo de pérdida (IVR, sin agente, fuera de horario…) '
-    + 'NO viene en la ingesta en vivo de Aircall — sólo está poblado en la carga histórica inicial. '
-    + 'Las perdidas sin motivo se agrupan en "Sin motivo registrado" para que el desglose sume exacto al total.</div>';
-  if (lostTotalWin > 0) {
-    var reasonsArr = Object.keys(byReason).map(function(k){ return [k, byReason[k]]; })
-      .sort(function(a,b){ return b[1]-a[1]; });
-    html += '<table class="cs-t"><thead><tr><th>Motivo</th><th class="num">Perdidas</th><th class="num">% del total</th></tr></thead><tbody>';
-    for (var ra = 0; ra < reasonsArr.length; ra++) {
-      var rk = reasonsArr[ra][0], rv = reasonsArr[ra][1];
-      html += '<tr><td>' + esc(reasonLabels[rk] || rk) + '</td><td class="num">' + rv.toLocaleString('es-CL')
-        + '</td><td class="num">' + acPctTxt(rv, lostTotalWin) + '</td></tr>';
-    }
-    html += '<tr><td style="color:var(--mut)">Sin motivo registrado</td><td class="num">' + sinMotivo.toLocaleString('es-CL')
-      + '</td><td class="num">' + acPctTxt(sinMotivo, lostTotalWin) + '</td></tr>';
-    html += '</tbody></table>';
-  } else {
-    html += '<div style="font-size:13px;color:var(--mut)">Sin llamadas perdidas en el período.</div>';
-  }
-  html += '</div></details>';
-
-  /* ── Acordeón: Detalle operativo (métricas de supervisor, para CS) ── */
-  var winCalls = [];
-  for (var w = 0; w < src.length; w++) {
-    if (acInWin(src[w])) winCalls.push(src[w]);
-  }
-  var durations = [], byIVR = {}, byAgent = {}, withTicket = 0, inboundWin = 0, ansWin = 0;
-  var ticketByCall = {};
-  for (var ti = 0; ti < T_ALL.length; ti++) { var aid = T_ALL[ti].aircall_call_id; if (aid) ticketByCall[aid] = T_ALL[ti].id; }
-  for (var w2 = 0; w2 < winCalls.length; w2++) {
-    var x = winCalls[w2];
-    if (x.direction === 'inbound') { inboundWin++; if (x.answered_at) ansWin++; }
-    if (x.duration && x.duration > 0 && x.answered_at) durations.push(x.duration);
-    if (x.number_name) byIVR[x.number_name] = (byIVR[x.number_name]||0) + 1;
-    if (x.user_name) {
-      byAgent[x.user_name] = byAgent[x.user_name] || { calls:0, dur:0, ans:0 };
-      byAgent[x.user_name].calls++;
-      if (x.duration) byAgent[x.user_name].dur += x.duration;
-      if (x.answered_at) byAgent[x.user_name].ans++;
-    }
-    if (ticketByCall[x.id]) withTicket++;
-  }
-  durations.sort(function(a,b){ return a-b; });
-  var durMed = durations.length ? durations[Math.floor(durations.length/2)] : 0;
-  function fmtDur(sec){ if (!sec) return '–'; var mn = Math.floor(sec/60), s = sec - mn*60; return mn + 'm ' + (s<10?'0':'') + s + 's'; }
-  function topN(map, n, ex){
-    var arr = Object.keys(map).map(function(k){ return [k, map[k]]; });
-    arr.sort(function(a,b){ return (ex?ex(b[1]):b[1]) - (ex?ex(a[1]):a[1]); });
-    return arr.slice(0, n);
-  }
-  html += '<details class="cs-acc" style="margin-top:10px"><summary class="cs-multi-summary">Detalle operativo ' + badgeAC + '</summary>'
-    + '<div style="padding:10px 2px">'
-    + '<div class="cs-kgrid k4" style="margin-bottom:12px">'
-    + kpiCard(fmtDur(durMed), 'Duración mediana', durations.length + ' contestadas', AC_RECV)
-    + kpiCard(acPctTxt(withTicket, winCalls.length), 'Con ticket Zendesk', withTicket.toLocaleString('es-CL') + ' cruzadas', '#6B4FBB')
-    + kpiCard(winCalls.length.toLocaleString('es-CL'), 'Llamadas totales', 'inbound + outbound', '#425563')
-    + kpiCard(acPctTxt(ansWin, inboundWin), 'Atención inbound', ansWin + '/' + inboundWin, AC_ANS)
-    + '</div>';
-  var ivrsTop = topN(byIVR, 8), agentsTop = topN(byAgent, 8, function(v){ return v.calls; });
-  html += '<div class="cs-cgrid">';
-  html += '<div><div class="cs-h2">Top IVRs</div><div class="cs-card"><table class="cs-t"><thead><tr><th>IVR / Número</th><th class="num">Calls</th></tr></thead><tbody>';
-  for (var iv = 0; iv < ivrsTop.length; iv++) html += '<tr><td>' + esc(ivrsTop[iv][0]) + '</td><td class="num">' + ivrsTop[iv][1].toLocaleString('es-CL') + '</td></tr>';
-  html += '</tbody></table></div></div>';
-  html += '<div><div class="cs-h2">Top agentes</div><div class="cs-card"><table class="cs-t"><thead><tr><th>Agente</th><th class="num">Calls</th><th class="num">Atend.</th><th class="num">Dur prom</th></tr></thead><tbody>';
-  for (var ag = 0; ag < agentsTop.length; ag++) {
-    var a2 = agentsTop[ag], avg = a2[1].ans > 0 ? Math.round(a2[1].dur / a2[1].ans) : 0;
-    html += '<tr><td>' + esc(a2[0]) + '</td><td class="num">' + a2[1].calls.toLocaleString('es-CL') + '</td><td class="num">' + a2[1].ans.toLocaleString('es-CL') + '</td><td class="num">' + fmtDur(avg) + '</td></tr>';
-  }
-  html += '</tbody></table></div></div></div></div></details>';
-
-  /* ── Aviso de alcance: Chat (Wotnot) fuera por gap de datos ── */
-  html += '<div class="cs-card" style="margin-top:14px;padding:11px 15px;font-size:12.5px;color:var(--mut);border-left:3px solid var(--ic-naranjo)">'
-    + '<b style="color:var(--text)">Chat (Wotnot):</b> los mensajes aún no se integran a la base de datos; '
-    + 'esta vista cubre sólo Teléfono (Aircall). La vista de Chat (recibidos / contestados / perdidos por día) '
-    + 'requiere integrar Wotnot como fuente — trabajo posterior.</div>';
-
-  /* nota de descartados (no subcontar en silencio) */
-  if (series.dropped > 0) {
-    html += '<div style="font-size:11px;color:var(--mut);margin-top:8px">Nota: ' + series.dropped
-      + ' llamada(s) sin fecha válida fueron excluidas de la serie por día.</div>';
-  }
-
+  html += '<div class="cs-h2">Curva de hoy por hora ' + AC_BADGE
+    + '<span class="cs-h2s">recibidas / contestadas / perdidas · línea = mismo día sem. pasada</span></div>'
+    + chartCard('', 'cAcLive', 300);
   return html;
 }
 
+/* ============================ TAB SEMANAL ============================ */
+/* Semana actual (lun→ahora, parcial) vs semana anterior misma franja. */
+function buildAcWeek(){
+  var now = new Date();
+  var dow = (now.getDay()+6)%7;                       /* 0=lunes */
+  var lun = new Date(now.getFullYear(), now.getMonth(), now.getDate()-dow, 0,0,0,0);
+  var lunU = Math.floor(lun.getTime()/1000);
+  var nowU = Math.floor(now.getTime()/1000);
+  var offset = nowU - lunU;
+  var lunAntU = Math.floor(new Date(lun.getFullYear(), lun.getMonth(), lun.getDate()-7, 0,0,0,0).getTime()/1000);
+
+  var actual = acStats(acInRange(lunU, nowU));
+  var anterior = acStats(acInRange(lunAntU, lunAntU + offset));   /* misma franja */
+  var cb = acCallbackAnalysis(acInRange(lunU, nowU), 7*86400);
+
+  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:11px">Teléfono ' + AC_BADGE
+    + ' · <b style="color:var(--text)">semana en curso</b> (parcial) vs misma franja de la semana anterior</div>';
+
+  html += '<div class="cs-kgrid k4">';
+  html += '<div class="cs-kpi"><div class="bar" style="background:' + AC_RECV + '"></div>'
+    + '<div class="v">' + actual.rec.toLocaleString('es-CL') + '</div><div class="l">Recibidas</div>'
+    + '<div class="s">vs sem.ant ' + acDeltaTxt(actual.rec, anterior.rec, anterior.rec<10).replace(/<\/?span[^>]*>/g,'') + '</div></div>';
+  var abCol = acAbColor(actual.abandPct);
+  html += '<div class="cs-kpi" style="border-color:' + abCol + '"><div class="bar" style="background:' + abCol + '"></div>'
+    + '<div class="v" style="color:' + abCol + '">' + acPctTxt(actual.lost, actual.rec) + '</div><div class="l">Abandono (bruto)</div>'
+    + '<div class="s">ajustado ' + acPctTxt(actual.lost-actual.lostCorto, actual.rec-actual.lostCorto) + ' (excl. ≤' + AC_ABAND_UMBRAL + 's)</div></div>';
+  html += kpiCard(acFmtSec(actual.asa), 'Espera prom. (ASA)', actual.asaN + ' con dato', AC_WAIT);
+  html += '<div class="cs-kpi"><div class="bar" style="background:' + AC_LOST + '"></div>'
+    + '<div class="v">' + cb.perdidasSinReintento.toLocaleString('es-CL') + '</div><div class="l">Perdidas sin reintento</div>'
+    + '<div class="s">clientes que no volvieron (7d) · daño real</div></div>';
+  html += '</div>';
+
+  html += '<div class="cs-h2">Semana por día ' + AC_BADGE
+    + '<span class="cs-h2s">contestadas (verde) + perdidas (rojo) por día · lun→dom</span></div>'
+    + chartCard('', 'cAcWeek', 300);
+  return html;
+}
+
+/* ============================ TAB ANÁLISIS (30d) ============================ */
+function buildAcAnalisis(){
+  var now = new Date();
+  var fromD = new Date(now.getFullYear(), now.getMonth(), now.getDate()-29, 0,0,0,0);
+  var fromU = Math.floor(fromD.getTime()/1000);
+  var toU = Math.floor(now.getTime()/1000) + 1;
+  var rango = acInRange(fromU, toU);
+  var st = acStats(rango);
+  var cb = acCallbackAnalysis(rango, 7*86400);
+
+  /* off-hours: recibidas y perdidas fuera del horario laboral CS */
+  var offRec=0, offLost=0;
+  for (var i=0;i<rango.length;i++){ var c=rango[i];
+    if (c.direction!=='inbound' || typeof c.started_at!=='number') continue;
+    if (!acEsLaboral(new Date(c.started_at*1000))){ offRec++; if(!c.answered_at) offLost++; }
+  }
+
+  var html = '<div style="font-size:12.5px;color:var(--mut);margin-bottom:11px">Teléfono ' + AC_BADGE
+    + ' · <b style="color:var(--text)">últimos 30 días</b> · análisis profundo</div>';
+
+  /* fila KPIs */
+  html += '<div class="cs-kgrid k4">';
+  html += kpiCard(st.rec.toLocaleString('es-CL'), 'Recibidas', st.ans + ' contest · ' + st.lost + ' perd', AC_RECV);
+  var abCol = acAbColor(st.abandPct);
+  html += '<div class="cs-kpi" style="border-color:' + abCol + '"><div class="bar" style="background:' + abCol + '"></div>'
+    + '<div class="v" style="color:' + abCol + '">' + acPctTxt(st.lost, st.rec) + '</div><div class="l">Abandono (bruto)</div>'
+    + '<div class="s">ajustado ' + acPctTxt(st.lost-st.lostCorto, st.rec-st.lostCorto) + '</div></div>';
+  html += kpiCard(acFmtSec(st.asa), 'Espera prom. (ASA)', 'p50 ' + acFmtSec(acPctil(st.asaArr,50)) + ' · p90 ' + acFmtSec(acPctil(st.asaArr,90)), AC_WAIT);
+  html += kpiCard(acFmtSec(st.talk), 'Duración conversación', st.talkN + ' contestadas (talk time)', '#6B4FBB');
+  html += '</div>';
+
+  /* serie por día (30d) */
+  var dates=[]; for (var d=29; d>=0; d--) dates.push(new Date(now.getFullYear(), now.getMonth(), now.getDate()-d, 0,0,0,0));
+  window.__acAnaDates = dates;
+  html += '<div class="cs-h2">Volumen y abandono por día ' + AC_BADGE + '</div>' + chartCard('', 'cAcAna', 300);
+
+  /* percentiles de espera */
+  html += '<div class="cs-h2">Distribución de la espera (ASA) ' + AC_BADGE + '<span class="cs-h2s">el promedio esconde la cola</span></div>'
+    + '<div class="cs-card"><table class="cs-t"><thead><tr>' + acThC('Mediana (p50)') + acThC('p90') + acThC('p95') + acThC('Máx') + '</tr></thead><tbody><tr>'
+    + acTdC(acFmtSec(acPctil(st.asaArr,50))) + acTdC(acFmtSec(acPctil(st.asaArr,90))) + acTdC(acFmtSec(acPctil(st.asaArr,95))) + acTdC(acFmtSec(st.asaArr.length?Math.max.apply(null,st.asaArr):null)) + '</tr></tbody></table></div>';
+
+  /* rellamadas + off-hours */
+  html += '<div class="cs-kgrid k4" style="margin-top:6px">';
+  html += kpiCard(acPctTxt(cb.rellamadaPct,100).replace('%','') + '%', 'Tasa de rellamada (7d)', 'mismo nº vuelve a llamar · proxy de no-resolución', '#6B4FBB');
+  html += kpiCard(cb.perdidasSinReintento.toLocaleString('es-CL'), 'Perdidas sin reintento', 'daño real (7d)', AC_LOST);
+  html += kpiCard(acPctTxt(offRec, st.rec), 'Recibidas fuera de horario', offRec + ' llamadas (L-V 8:30-20 · Sáb 8:30-13:30)', AC_WAIT);
+  html += kpiCard(acPctTxt(offLost, offRec), 'Abandono fuera de horario', offLost + ' de ' + offRec, AC_LOST);
+  html += '</div>';
+
+  /* abandono por mesa (curado) */
+  html += acTablaPorMesa(rango, 'Abandono por mesa · últimos 30 días');
+  return html;
+}
+
+/* ============================ TAB POR MESA / LÍNEA (org) ============================ */
+function buildAcMesa(){
+  var html = '<div class="cs-card" style="padding:14px 16px;margin-bottom:14px;border-left:3px solid var(--ic-naranjo);font-size:13px;color:var(--mut)">'
+    + '<b style="color:var(--text)">Análisis por cliente no disponible en Teléfono.</b> '
+    + 'Aircall no entrega la organización/razón social de quien llama (sin cross-link a cliente). '
+    + 'El análisis por cliente real vive en el canal <b>Zendesk</b>. Aquí se muestra el desglose <b>por mesa / línea</b> (el número Aircall marcado), que es lo disponible en telefonía.</div>';
+  html += acTablaPorMesa(acSrc(), 'Por mesa / línea · histórico completo');
+  return html;
+}
+
+/* tabla por mesa curada (excluye PII de agentes, números crudos, "Libre") */
+function acTablaPorMesa(calls, titulo){
+  var byMesa = {}, excluidas = 0;
+  for (var i=0;i<calls.length;i++){ var c=calls[i];
+    if (c.direction!=='inbound') continue;
+    var nm = c.number_name;
+    if (acMesaExcluir(nm)){ excluidas++; continue; }
+    var m = byMesa[nm] = byMesa[nm] || { rec:0, ans:0, lost:0, asa:[], horas:{} };
+    m.rec++;
+    if (c.answered_at){ m.ans++; if(typeof c.frt_sec==='number') m.asa.push(c.frt_sec); }
+    else m.lost++;
+    if (typeof c.started_at==='number'){ var h=new Date(c.started_at*1000).getHours(); m.horas[h]=(m.horas[h]||0)+1; }
+  }
+  var arr = Object.keys(byMesa).map(function(k){ return [k, byMesa[k]]; })
+    .filter(function(e){ return e[1].rec>0; })
+    .sort(function(a,b){ return b[1].rec - a[1].rec; });
+  var html = '<div class="cs-h2">' + esc(titulo) + ' ' + AC_BADGE
+    + '<span class="cs-h2s">mesa = número Aircall (no cliente) · clasificación fina pendiente de curar con la líder</span></div>'
+    + '<div class="cs-card"><table class="cs-t"><thead><tr><th>Mesa / línea</th>'
+    + acThC('Recibidas') + acThC('Contestación') + acThC('Abandono') + acThC('Espera (ASA)') + acThC('Hora pico') + '</tr></thead><tbody>';
+  for (var k=0;k<arr.length;k++){ var nm=arr[k][0], m=arr[k][1];
+    var asaAvg = m.asa.length ? m.asa.reduce(function(x,y){return x+y;},0)/m.asa.length : null;
+    var hp=null,hpv=-1; for (var h in m.horas){ if(m.horas[h]>hpv){hpv=m.horas[h];hp=h;} }
+    var abp = acPct(m.lost,m.rec);
+    html += '<tr><td>' + esc(nm) + '</td>'
+      + acTdC(m.rec.toLocaleString('es-CL'))
+      + acTdC(acPctTxt(m.ans,m.rec))
+      + '<td style="text-align:center;color:' + acAbColor(abp) + ';font-weight:600">' + acPctTxt(m.lost,m.rec) + '</td>'
+      + acTdC(acFmtSec(asaAvg))
+      + acTdC(hp!=null ? (acPad(parseInt(hp,10))+':00') : '—') + '</tr>';
+  }
+  html += '</tbody></table>';
+  if (excluidas>0) html += '<div style="font-size:11px;color:var(--mut);padding:8px 2px 0">Nota: ' + excluidas + ' llamadas en líneas no clasificables (nombres de agente, números sin etiqueta, "Libre") excluidas de esta vista.</div>';
+  html += '</div>';
+  return html;
+}
+
+/* ============================ CHARTS ============================ */
 function drawAircallCharts(){
-  var src = (window.__CS_CALLS && window.__CS_CALLS.length) ? window.__CS_CALLS : CALLS_ALL;
-  if (!src || src.length === 0) return;
-  var series = acComputeSeries();
-  var days = series.days;
-  if (!days.length) return;
-
-  var labels = days.map(function(d){ return d.label; });
-  var ansData  = days.map(function(d){ return d.ans; });
-  var lostData = days.map(function(d){ return d.lost; });
-  /* finde atenuado pero a ESCALA REAL (no se oculta: un sábado malo debe verse) */
-  var ansBg  = days.map(function(d){ return d.isWeekend ? acAlpha(AC_ANS, .42)  : AC_ANS; });
-  var lostBg = days.map(function(d){ return d.isWeekend ? acAlpha(AC_LOST, .42) : AC_LOST; });
-
-  mkChart('cAcDaySeries', {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        { label:'Contestadas', data:ansData,  backgroundColor:ansBg,  borderColor:AC_SEGB, borderWidth:1, stack:'calls' },
-        { label:'Perdidas',    data:lostData, backgroundColor:lostBg, borderColor:AC_SEGB, borderWidth:1, stack:'calls' }
-      ]
-    },
-    options: {
-      plugins: {
-        legend: baseLegend(),
-        tooltip: {
-          mode: 'index', intersect: false,
-          callbacks: {
-            footer: function(items){
-              if (!items || !items.length) return '';
-              var d = days[items[0].dataIndex];
-              return 'Recibidas ' + d.rec + ' · Abandono ' + acPctTxt(d.lost, d.rec)
-                + (d.isToday ? ' (parcial)' : '');
-            }
-          }
-        }
-      },
-      scales: axisOpts(true)
-    }
-  });
+  if (acGuard()) return;
+  if (S.tab === 'live') return drawAcLive();
+  if (S.tab === 'week') return drawAcWeek();
+  if (S.tab === 'org')  return;          /* mesa: solo tabla */
+  return drawAcAna();
+}
+function drawAcLive(){
+  var now = new Date();
+  var hoy0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+  var sem0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()-7, 0,0,0,0);
+  var hRec=new Array(24).fill(0), hAns=new Array(24).fill(0), hLost=new Array(24).fill(0), semRec=new Array(24).fill(0);
+  var hoyFrom=Math.floor(hoy0.getTime()/1000), nowU=Math.floor(now.getTime()/1000);
+  var semFrom=Math.floor(sem0.getTime()/1000), semTo=semFrom + (nowU-hoyFrom);
+  var src=acSrc();
+  for (var i=0;i<src.length;i++){ var c=src[i]; if(c.direction!=='inbound'||typeof c.started_at!=='number') continue;
+    var t=c.started_at;
+    if (t>=hoyFrom && t<nowU){ var h=new Date(t*1000).getHours(); hRec[h]++; if(c.answered_at)hAns[h]++; else hLost[h]++; }
+    else if (t>=semFrom && t<semTo){ semRec[new Date(t*1000).getHours()]++; }
+  }
+  var labels=[]; for (var x=0;x<24;x++) labels.push(acPad(x)+'h');
+  mkChart('cAcLive', { data:{ labels:labels, datasets:[
+      { type:'bar', label:'Contestadas', data:hAns, backgroundColor:AC_ANS, stack:'h' },
+      { type:'bar', label:'Perdidas', data:hLost, backgroundColor:AC_LOST, stack:'h' },
+      { type:'line', label:'Recibidas sem. pasada', data:semRec, borderColor:acAlpha(AC_RECV,.7), backgroundColor:acAlpha(AC_RECV,.7), borderDash:[5,4], pointRadius:0, tension:.3 }
+    ]}, options:{ plugins:{legend:baseLegend()}, scales:axisOpts(true) } });
+}
+function drawAcWeek(){
+  var now=new Date(); var dow=(now.getDay()+6)%7;
+  var lun=new Date(now.getFullYear(),now.getMonth(),now.getDate()-dow,0,0,0,0);
+  var dates=[]; for (var i=0;i<7;i++) dates.push(new Date(lun.getFullYear(),lun.getMonth(),lun.getDate()+i,0,0,0,0));
+  var serie=acSerieDias(dates);
+  mkChart('cAcWeek', { type:'bar', data:{ labels:serie.map(function(d){return ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][(d.date.getDay()+6)%7];}),
+    datasets:[ {label:'Contestadas',data:serie.map(function(d){return d.ans;}),backgroundColor:AC_ANS,borderColor:AC_SEGB,borderWidth:1,stack:'w'},
+      {label:'Perdidas',data:serie.map(function(d){return d.lost;}),backgroundColor:AC_LOST,borderColor:AC_SEGB,borderWidth:1,stack:'w'} ]},
+    options:{ plugins:{legend:baseLegend(), tooltip:{mode:'index',intersect:false,callbacks:{footer:function(it){if(!it.length)return'';var d=serie[it[0].dataIndex];return 'Recibidas '+d.rec+' · Abandono '+acPctTxt(d.lost,d.rec);}}}}, scales:axisOpts(true) } });
+}
+function drawAcAna(){
+  var dates = window.__acAnaDates || [];
+  if (!dates.length) return;
+  var serie = acSerieDias(dates);
+  var ansBg=serie.map(function(d){return d.isWeekend?acAlpha(AC_ANS,.42):AC_ANS;});
+  var lostBg=serie.map(function(d){return d.isWeekend?acAlpha(AC_LOST,.42):AC_LOST;});
+  mkChart('cAcAna', { type:'bar', data:{ labels:serie.map(function(d){return d.label;}),
+    datasets:[ {label:'Contestadas',data:serie.map(function(d){return d.ans;}),backgroundColor:ansBg,borderColor:AC_SEGB,borderWidth:1,stack:'a'},
+      {label:'Perdidas',data:serie.map(function(d){return d.lost;}),backgroundColor:lostBg,borderColor:AC_SEGB,borderWidth:1,stack:'a'} ]},
+    options:{ plugins:{legend:baseLegend(), tooltip:{mode:'index',intersect:false,callbacks:{footer:function(it){if(!it.length)return'';var d=serie[it[0].dataIndex];return 'Recibidas '+d.rec+' · Abandono '+acPctTxt(d.lost,d.rec);}}}}, scales:axisOpts(true) } });
 }
 
 /* ============================================================
